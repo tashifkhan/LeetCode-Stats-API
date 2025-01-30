@@ -1,12 +1,17 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from typing import Dict, Optional
 import httpx
 import json
 from decimal import Decimal, ROUND_HALF_UP
 
-app = FastAPI()
+app = FastAPI(
+    title="LeetCode Stats API",
+    description="An API to fetch and display user statistics from LeetCode.",
+    version="1.0.0"
+)
 
 # Enable CORS
 app.add_middleware(
@@ -35,6 +40,16 @@ class StatsResponse(BaseModel):
 
     @classmethod
     def error(cls, status: str, message: str):
+        """
+        Creates an error response with default values.
+
+        Args:
+            status (str): The status of the response.
+            message (str): The error message.
+
+        Returns:
+            StatsResponse: An instance of StatsResponse with default values.
+        """
         return cls(
             status=status,
             message=message,
@@ -54,6 +69,15 @@ class StatsResponse(BaseModel):
         )
 
 async def decode_graphql_json(json_data: dict) -> StatsResponse:
+    """
+    Decodes the JSON response from the GraphQL API and maps it to StatsResponse.
+
+    Args:
+        json_data (dict): The JSON data from the GraphQL API.
+
+    Returns:
+        StatsResponse: The mapped StatsResponse object.
+    """
     try:
         data = json_data["data"]
         all_questions = data["allQuestionsCount"]
@@ -107,15 +131,27 @@ async def decode_graphql_json(json_data: dict) -> StatsResponse:
     except Exception as e:
         return StatsResponse.error("error", str(e))
 
-@app.get("/", response_model=StatsResponse)
-async def get_stats_root():
-    return StatsResponse.error(
-        "error",
-        "please enter your username after /"
-    )
+@app.get("/")
+async def root():
+    """
+    Root endpoint that redirects to the API documentation.
+
+    Returns:
+        RedirectResponse: Redirects to the /docs endpoint.
+    """
+    return RedirectResponse(url="/docs")
 
 @app.get("/{username}", response_model=StatsResponse)
 async def get_stats(username: str):
+    """
+    Fetches the statistics for a given LeetCode username.
+
+    Args:
+        username (str): The LeetCode username.
+
+    Returns:
+        StatsResponse: The statistics of the user.
+    """
     query = """
     query getUserProfile($username: String!) {
         allQuestionsCount {
