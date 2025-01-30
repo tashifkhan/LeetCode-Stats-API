@@ -171,7 +171,3 @@ async def get_stats(username: str):
                 
         except Exception as e:
             return StatsResponse.error("error", str(e))
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, port=8000)
