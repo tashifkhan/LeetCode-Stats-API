@@ -4,7 +4,7 @@ import requests
 import json
 from decimal import Decimal, ROUND_HALF_UP
 from dataclasses import dataclass, asdict
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Any
 
 app = Flask(__name__)
 CORS(app)
@@ -45,6 +45,52 @@ class StatsResponse:
             contributionPoints=0,
             reputation=0,
             submissionCalendar={}
+        )
+
+@dataclass
+class ContestBadge:
+    name: str
+
+@dataclass
+class ContestInfo:
+    title: str
+    startTime: int
+
+@dataclass
+class ContestHistoryEntry:
+    attended: bool
+    rating: int
+    ranking: int
+    trendDirection: str
+    problemsSolved: int
+    totalProblems: int
+    finishTimeInSeconds: int
+    contest: ContestInfo
+
+@dataclass
+class ContestRankingResponse:
+    status: str
+    message: str
+    attendedContestsCount: int
+    rating: int
+    globalRanking: int
+    totalParticipants: int
+    topPercentage: float
+    badge: Optional[ContestBadge]
+    contestHistory: List[ContestHistoryEntry]
+
+    @classmethod
+    def error(cls, status: str, message: str):
+        return cls(
+            status=status,
+            message=message,
+            attendedContestsCount=0,
+            rating=0,
+            globalRanking=0,
+            totalParticipants=0,
+            topPercentage=0.0,
+            badge=None,
+            contestHistory=[]
         )
 
 def decode_graphql_json(json_data: dict) -> StatsResponse:
@@ -100,6 +146,61 @@ def decode_graphql_json(json_data: dict) -> StatsResponse:
         )
     except Exception as e:
         return StatsResponse.error("error", str(e))
+
+def decode_contest_ranking_json(json_data: dict) -> ContestRankingResponse:
+    try:
+        data = json_data["data"]
+        
+        # Check if user has contest data
+        if data["userContestRanking"] is None:
+            return ContestRankingResponse.error("error", "user has no contest history")
+        
+        contest_ranking = data["userContestRanking"]
+        contest_history = data["userContestRankingHistory"]
+        
+        # Process badge info
+        badge = None
+        if contest_ranking.get("badge"):
+            badge = ContestBadge(name=contest_ranking["badge"]["name"])
+        
+        # Process contest history
+        history_entries = []
+        for entry in contest_history:
+            history_entries.append(
+                ContestHistoryEntry(
+                    attended=entry["attended"],
+                    rating=entry["rating"],
+                    ranking=entry["ranking"],
+                    trendDirection=entry["trendDirection"],
+                    problemsSolved=entry["problemsSolved"],
+                    totalProblems=entry["totalProblems"],
+                    finishTimeInSeconds=entry["finishTimeInSeconds"],
+                    contest=ContestInfo(
+                        title=entry["contest"]["title"],
+                        startTime=entry["contest"]["startTime"]
+                    )
+                )
+            )
+        
+        # Calculate top percentage with proper rounding
+        top_percentage = 0.0
+        if contest_ranking["globalRanking"] > 0 and contest_ranking["totalParticipants"] > 0:
+            percentage = (contest_ranking["globalRanking"] / contest_ranking["totalParticipants"]) * 100
+            top_percentage = round(float(Decimal(str(percentage)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)), 2)
+        
+        return ContestRankingResponse(
+            status="success",
+            message="retrieved",
+            attendedContestsCount=contest_ranking["attendedContestsCount"],
+            rating=contest_ranking["rating"],
+            globalRanking=contest_ranking["globalRanking"],
+            totalParticipants=contest_ranking["totalParticipants"],
+            topPercentage=top_percentage,
+            badge=badge,
+            contestHistory=history_entries
+        )
+    except Exception as e:
+        return ContestRankingResponse.error("error", str(e))
 
 from flask import render_template_string
 
@@ -376,6 +477,52 @@ def get_stats_root():
             </section>
 
             <section class="endpoint">
+                <h2>Get Contest Rankings</h2>
+                <p><code class="method">GET</code> <code class="path">/<span>{username}</span>/contests</code></p>
+                
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <code>username</code> (path parameter): LeetCode username
+                </div>
+
+                <h3>Response Format</h3>
+                <pre>
+<code>
+    {
+        "status": "success",
+        "message": "retrieved",
+        "attendedContestsCount": 10,
+        "rating": 1500,
+        "globalRanking": 5000,
+        "totalParticipants": 100000,
+        "topPercentage": 5.00,
+        "badge": {
+            "name": "Guardian"
+        },
+        "contestHistory": [
+            {
+                "attended": true,
+                "rating": 1500,
+                "ranking": 1000,
+                "trendDirection": "UP",
+                "problemsSolved": 3,
+                "totalProblems": 4,
+                "finishTimeInSeconds": 3600,
+                "contest": {
+                    "title": "Weekly Contest 123",
+                    "startTime": 1615694400
+                }
+            }
+        ]
+    }
+</code>
+                </pre>
+
+                <h3>Example</h3>
+                <pre><code>GET /khan-tashif/contests</code></pre>
+            </section>
+
+            <section class="endpoint">
                 <h2>Error Responses</h2>
                 
                 <div class="error-response">
@@ -478,5 +625,63 @@ def get_stats(username):
         error_response = StatsResponse.error("error", str(e))
         return jsonify(asdict(error_response))
 
+@app.route('/<username>/contests')
+def get_contest_ranking(username):
+    query = """
+    query getUserContestRanking($username: String!) {
+        userContestRanking(username: $username) {
+            attendedContestsCount
+            rating
+            globalRanking
+            totalParticipants
+            topPercentage
+            badge {
+                name
+            }
+        }
+        userContestRankingHistory(username: $username) {
+            attended
+            rating
+            ranking
+            trendDirection
+            problemsSolved
+            totalProblems
+            finishTimeInSeconds
+            contest {
+                title
+                startTime
+            }
+        }
+    }
+    """
+    
+    try:
+        response = requests.post(
+            "https://leetcode.com/graphql/",
+            json={
+                "query": query,
+                "variables": {"username": username}
+            },
+            headers={
+                "referer": f"https://leetcode.com/{username}/",
+                "Content-Type": "application/json"
+            }
+        )
+        
+        if response.status_code == 200:
+            json_data = response.json()
+            if "errors" in json_data:
+                error_response = ContestRankingResponse.error("error", "user does not exist")
+                return jsonify(asdict(error_response))
+            contest_response = decode_contest_ranking_json(json_data)
+            return jsonify(asdict(contest_response))
+        else:
+            error_response = ContestRankingResponse.error("error", f"HTTP {response.status_code}")
+            return jsonify(asdict(error_response))
+            
+    except Exception as e:
+        error_response = ContestRankingResponse.error("error", str(e))
+        return jsonify(asdict(error_response))
+
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", debug=True)
+    app.run(host="0.0.0.0", debug=True, port=58352)
