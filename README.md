@@ -1,6 +1,7 @@
 # LeetCode Stats API
 
 A robust RESTful API to fetch and display LeetCode statistics for users, built with Flask.
+
 hosted at [leetcode-stats.tashif.codes](https://leetcode-stats.tashif.codes)
 
 ## Features

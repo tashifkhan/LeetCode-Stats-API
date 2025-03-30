@@ -1,7 +1,8 @@
 import os
 
 class Config:
-    DEBUG = os.environ.get('FLASK_DEBUG', True)
+    ENV = os.environ.get('FLASK_ENV', 'production')
+    DEBUG = ENV == 'development'
     PORT = int(os.environ.get('PORT', 58352))
     HOST = os.environ.get('HOST', '0.0.0.0')
     LEETCODE_API_URL = 'https://leetcode.com/graphql/'
