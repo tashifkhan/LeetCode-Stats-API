@@ -93,6 +93,96 @@ class ContestRankingResponse:
             contestHistory=[]
         )
 
+@dataclass
+class Contribution:
+    points: int
+    questionCount: int
+    testcaseCount: int
+
+@dataclass
+class Badge:
+    id: str
+    displayName: str
+    icon: str
+    creationDate: int
+
+@dataclass
+class UpcomingBadge:
+    name: str
+    icon: str
+
+@dataclass
+class UserProfile:
+    realName: str
+    userAvatar: str
+    birthday: str
+    ranking: int
+    reputation: int
+    websites: List[str]
+    countryName: str
+    company: str
+    school: str
+    skillTags: List[str]
+    aboutMe: str
+    starRating: float
+
+@dataclass
+class RecentSubmission:
+    title: str
+    titleSlug: str
+    timestamp: int
+    statusDisplay: str
+    lang: str
+
+@dataclass
+class ProfileResponse:
+    status: str
+    message: str
+    username: str
+    githubUrl: Optional[str]
+    twitterUrl: Optional[str]
+    linkedinUrl: Optional[str]
+    contributions: Contribution
+    profile: UserProfile
+    badges: List[Badge]
+    upcomingBadges: List[UpcomingBadge]
+    activeBadge: Optional[Badge]
+    submitStats: Dict[str, List[Dict[str, Any]]]
+    submissionCalendar: Dict[str, int]
+    recentSubmissions: List[RecentSubmission]
+
+    @classmethod
+    def error(cls, status: str, message: str):
+        return cls(
+            status=status,
+            message=message,
+            username="",
+            githubUrl=None,
+            twitterUrl=None,
+            linkedinUrl=None,
+            contributions=Contribution(points=0, questionCount=0, testcaseCount=0),
+            profile=UserProfile(
+                realName="",
+                userAvatar="",
+                birthday="",
+                ranking=0,
+                reputation=0,
+                websites=[],
+                countryName="",
+                company="",
+                school="",
+                skillTags=[],
+                aboutMe="",
+                starRating=0.0
+            ),
+            badges=[],
+            upcomingBadges=[],
+            activeBadge=None,
+            submitStats={"acSubmissionNum": [], "totalSubmissionNum": []},
+            submissionCalendar={},
+            recentSubmissions=[]
+        )
+
 def decode_graphql_json(json_data: dict) -> StatsResponse:
     try:
         data = json_data["data"]
@@ -201,6 +291,113 @@ def decode_contest_ranking_json(json_data: dict) -> ContestRankingResponse:
         )
     except Exception as e:
         return ContestRankingResponse.error("error", str(e))
+
+def decode_profile_json(json_data: dict) -> ProfileResponse:
+    try:
+        data = json_data["data"]
+        matched_user = data["matchedUser"]
+        
+        # Extract basic profile info
+        username = matched_user["username"]
+        github_url = matched_user.get("githubUrl")
+        twitter_url = matched_user.get("twitterUrl")
+        linkedin_url = matched_user.get("linkedinUrl")
+        
+        # Extract contributions
+        contributions_data = matched_user["contributions"]
+        contributions = Contribution(
+            points=contributions_data["points"],
+            questionCount=contributions_data["questionCount"],
+            testcaseCount=contributions_data["testcaseCount"]
+        )
+        
+        # Extract profile details
+        profile_data = matched_user["profile"]
+        websites = profile_data.get("websites", [])
+        skill_tags = profile_data.get("skillTags", [])
+        
+        profile = UserProfile(
+            realName=profile_data.get("realName", ""),
+            userAvatar=profile_data.get("userAvatar", ""),
+            birthday=profile_data.get("birthday", ""),
+            ranking=profile_data.get("ranking", 0),
+            reputation=profile_data.get("reputation", 0),
+            websites=websites if websites else [],
+            countryName=profile_data.get("countryName", ""),
+            company=profile_data.get("company", ""),
+            school=profile_data.get("school", ""),
+            skillTags=skill_tags if skill_tags else [],
+            aboutMe=profile_data.get("aboutMe", ""),
+            starRating=profile_data.get("starRating", 0.0)
+        )
+        
+        # Extract badges
+        badges = []
+        for badge_data in matched_user.get("badges", []):
+            badges.append(Badge(
+                id=badge_data["id"],
+                displayName=badge_data["displayName"],
+                icon=badge_data["icon"],
+                creationDate=badge_data["creationDate"]
+            ))
+        
+        # Extract upcoming badges
+        upcoming_badges = []
+        for badge_data in matched_user.get("upcomingBadges", []):
+            upcoming_badges.append(UpcomingBadge(
+                name=badge_data["name"],
+                icon=badge_data["icon"]
+            ))
+        
+        # Extract active badge
+        active_badge = None
+        if matched_user.get("activeBadge"):
+            badge_data = matched_user["activeBadge"]
+            active_badge = Badge(
+                id=badge_data["id"],
+                displayName=badge_data["displayName"],
+                icon=badge_data["icon"],
+                creationDate=badge_data["creationDate"]
+            )
+        
+        # Extract submit stats
+        submit_stats = {
+            "acSubmissionNum": matched_user["submitStats"]["acSubmissionNum"],
+            "totalSubmissionNum": matched_user["submitStats"]["totalSubmissionNum"]
+        }
+        
+        # Extract submission calendar
+        submission_calendar = json.loads(matched_user["submissionCalendar"])
+        
+        # Extract recent submissions
+        recent_submissions = []
+        for submission in data.get("recentSubmissionList", []):
+            recent_submissions.append(RecentSubmission(
+                title=submission["title"],
+                titleSlug=submission["titleSlug"],
+                timestamp=submission["timestamp"],
+                statusDisplay=submission["statusDisplay"],
+                lang=submission["lang"]
+            ))
+        
+        return ProfileResponse(
+            status="success",
+            message="retrieved",
+            username=username,
+            githubUrl=github_url,
+            twitterUrl=twitter_url,
+            linkedinUrl=linkedin_url,
+            contributions=contributions,
+            profile=profile,
+            badges=badges,
+            upcomingBadges=upcoming_badges,
+            activeBadge=active_badge,
+            submitStats=submit_stats,
+            submissionCalendar=submission_calendar,
+            recentSubmissions=recent_submissions
+        )
+    except Exception as e:
+        return ProfileResponse.error("error", str(e))
 
 from flask import render_template_string
 
@@ -523,6 +720,86 @@ def get_stats_root():
             </section>
 
             <section class="endpoint">
+                <h2>Get User Profile</h2>
+                <p><code class="method">GET</code> <code class="path">/<span>{username}</span>/profile</code></p>
+                
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <code>username</code> (path parameter): LeetCode username
+                </div>
+
+                <h3>Response Format</h3>
+                <pre>
+<code>
+    {
+        "status": "success",
+        "message": "retrieved",
+        "username": "example_user",
+        "githubUrl": "https://github.com/example",
+        "twitterUrl": "https://twitter.com/example",
+        "linkedinUrl": "https://linkedin.com/in/example",
+        "contributions": {
+            "points": 100,
+            "questionCount": 5,
+            "testcaseCount": 10
+        },
+        "profile": {
+            "realName": "Example User",
+            "userAvatar": "https://assets.leetcode.com/avatar.jpg",
+            "birthday": "2000-01-01",
+            "ranking": 10000,
+            "reputation": 100,
+            "websites": ["https://example.com"],
+            "countryName": "United States",
+            "company": "Example Corp",
+            "school": "Example University",
+            "skillTags": ["Python", "Algorithms"],
+            "aboutMe": "LeetCode enthusiast",
+            "starRating": 4.5
+        },
+        "badges": [
+            {
+                "id": "1",
+                "displayName": "Problem Solver",
+                "icon": "badge-icon-url",
+                "creationDate": 1609459200
+            }
+        ],
+        "upcomingBadges": [
+            {
+                "name": "Fast Coder",
+                "icon": "upcoming-badge-icon-url"
+            }
+        ],
+        "activeBadge": {
+            "id": "1",
+            "displayName": "Problem Solver",
+            "icon": "badge-icon-url",
+            "creationDate": 1609459200
+        },
+        "submitStats": {
+            "acSubmissionNum": [...],
+            "totalSubmissionNum": [...]
+        },
+        "submissionCalendar": {"timestamp": "count"},
+        "recentSubmissions": [
+            {
+                "title": "Two Sum",
+                "titleSlug": "two-sum",
+                "timestamp": 1609459200,
+                "statusDisplay": "Accepted",
+                "lang": "python3"
+            }
+        ]
+    }
+</code>
+                </pre>
+
+                <h3>Example</h3>
+                <pre><code>GET /khan-tashif/profile</code></pre>
+            </section>
+
+            <section class="endpoint">
                 <h2>Error Responses</h2>
                 
                 <div class="error-response">
@@ -681,6 +958,106 @@ def get_contest_ranking(username):
             
     except Exception as e:
         error_response = ContestRankingResponse.error("error", str(e))
+        return jsonify(asdict(error_response))
+
+@app.route('/<username>/profile')
+def get_user_profile(username):
+    query = """
+    query getUserProfile($username: String!) {
+        allQuestionsCount {
+            difficulty
+            count
+        }
+        matchedUser(username: $username) {
+            username
+            githubUrl
+            twitterUrl
+            linkedinUrl
+            contributions {
+                points
+                questionCount
+                testcaseCount
+            }
+            profile {
+                realName
+                userAvatar
+                birthday
+                ranking
+                reputation
+                websites
+                countryName
+                company
+                school
+                skillTags
+                aboutMe
+                starRating
+            }
+            badges {
+                id
+                displayName
+                icon
+                creationDate
+            }
+            upcomingBadges {
+                name
+                icon
+            }
+            activeBadge {
+                id
+                displayName
+                icon
+                creationDate
+            }
+            submitStats {
+                totalSubmissionNum {
+                    difficulty
+                    count
+                    submissions
+                }
+                acSubmissionNum {
+                    difficulty
+                    count
+                    submissions
+                }
+            }
+            submissionCalendar
+        }
+        recentSubmissionList(username: $username, limit: 20) {
+            title
+            titleSlug
+            timestamp
+            statusDisplay
+            lang
+        }
+    }
+    """
+    
+    try:
+        response = requests.post(
+            "https://leetcode.com/graphql/",
+            json={
+                "query": query,
+                "variables": {"username": username}
+            },
+            headers={
+                "referer": f"https://leetcode.com/{username}/",
+                "Content-Type": "application/json"
+            }
+        )
+        
+        if response.status_code == 200:
+            json_data = response.json()
+            if "errors" in json_data:
+                error_response = ProfileResponse.error("error", "user does not exist")
+                return jsonify(asdict(error_response))
+            profile_response = decode_profile_json(json_data)
+            return jsonify(asdict(profile_response))
+        else:
+            error_response = ProfileResponse.error("error", f"HTTP {response.status_code}")
+            return jsonify(asdict(error_response))
+            
+    except Exception as e:
+        error_response = ProfileResponse.error("error", str(e))
         return jsonify(asdict(error_response))
 
 if __name__ == '__main__':
