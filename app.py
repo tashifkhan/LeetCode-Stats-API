@@ -495,7 +495,6 @@ def get_stats_root():
                 }
                 h1, h2, h3 {
                     color: var(--heading-color);
-                    border-bottom: 2px solid var(--secondary-color);
                     padding-bottom: 0.75rem;
                     margin-top: 2rem;
                     font-weight: 600;
@@ -504,18 +503,52 @@ def get_stats_root():
                 h1 {
                     font-size: clamp(1.8rem, 4vw, 2.5rem);
                     margin-bottom: 2rem;
+                    border-bottom: 2px solid var(--secondary-color);
                 }
                 .endpoint {
                     background: var(--card-background);
                     border-radius: 12px;
-                    padding: 1.5rem;
+                    padding: 0;
                     margin: 1.5rem 0;
                     box-shadow: 0 10px 30px -15px rgba(2,12,27,0.7);
                     border: 1px solid var(--hover-color);
-                    transition: transform 0.2s ease-in-out;
+                    transition: all 0.2s ease-in-out;
+                    overflow: hidden;
                 }
-                .endpoint:hover {
-                    transform: translateY(-5px);
+                .endpoint-header {
+                    padding: 1.5rem;
+                    cursor: pointer;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    transition: background-color 0.2s ease;
+                }
+                .endpoint-header:hover {
+                    background-color: var(--hover-color);
+                }
+                .endpoint-header h2 {
+                    margin: 0;
+                    padding: 0;
+                    border: none;
+                }
+                .endpoint-content {
+                    max-height: 0;
+                    overflow: hidden;
+                    transition: max-height 0.3s ease;
+                    padding: 0 1.5rem;
+                }
+                .endpoint.active .endpoint-content {
+                    max-height: 5000px; /* Large enough to show all content */
+                    padding: 0 1.5rem 1.5rem;
+                }
+                .endpoint-toggle {
+                    font-size: 1.5rem;
+                    font-weight: bold;
+                    color: var(--secondary-color);
+                    transition: transform 0.3s ease;
+                }
+                .endpoint.active .endpoint-toggle {
+                    transform: rotate(45deg);
                 }
                 code {
                     background: var(--code-background);
@@ -592,9 +625,8 @@ def get_stats_root():
                     body {
                         padding: 1rem 0.75rem;
                     }
-                    .endpoint {
+                    .endpoint-header {
                         padding: 1.25rem;
-                        margin: 1.25rem 0;
                     }
                     pre {
                         padding: 1rem;
@@ -608,9 +640,8 @@ def get_stats_root():
                     body {
                         padding: 1rem 0.5rem;
                     }
-                    .endpoint {
+                    .endpoint-header {
                         padding: 1rem;
-                        margin: 1rem 0;
                     }
                     h1 {
                         font-size: 1.8rem;
@@ -623,30 +654,6 @@ def get_stats_root():
                         padding: 1rem;
                         margin: 1rem 0;
                     }
-                }
-                .copy-button {
-                    position: absolute;
-                    top: 0.5rem;
-                    right: 0.5rem;
-                    padding: 0.5rem;
-                    background: var(--hover-color);
-                    border: none;
-                    border-radius: 4px;
-                    color: var(--secondary-color);
-                    cursor: pointer;
-                    opacity: 0;
-                    transition: opacity 0.2s ease-in-out;
-                }
-                pre:hover .copy-button {
-                    opacity: 1;
-                }
-                .copy-button:hover {
-                    background: var(--secondary-color);
-                    color: var(--background-color);
-                }
-                .copy-button.copied {
-                    background: var(--secondary-color);
-                    color: var(--background-color);
                 }
                 .method {
                     color: #ff79c6;
@@ -662,265 +669,292 @@ def get_stats_root():
                     background: var(--hover-color);
                     border-radius: 0 8px 8px 0;
                 }
-                .error-response {
-                    border-left: 4px solid #ff79c6;
-                    padding: 1.5rem;
-                    margin: 1.5rem 0;
+                .error-section {
+                    margin: 2rem 0;
+                }
+                .error-section h2 {
+                    border-bottom: 2px solid var(--secondary-color);
+                    padding-bottom: 0.75rem;
+                }
+                .error-toggle {
+                    cursor: pointer;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 1rem;
+                    background: var(--card-background);
+                    border-radius: 8px;
+                    margin-bottom: 1rem;
+                    border: 1px solid var(--hover-color);
+                }
+                .error-toggle:hover {
                     background: var(--hover-color);
-                    border-radius: 0 8px 8px 0;
                 }
-                .note {
-                    background: var(--hover-color);
-                    border-left: 4px solid var(--secondary-color);
-                    padding: 1.5rem;
-                    margin: 1.5rem 0;
-                    border-radius: 0 8px 8px 0;
+                .error-toggle h3 {
+                    margin: 0;
+                    padding: 0;
+                    border: none;
                 }
-                footer {
-                    margin-top: 4rem;
-                    padding-top: 2rem;
-                    border-top: 1px solid var(--hover-color);
-                    text-align: center;
-                    color: var(--text-color);
-                    font-size: 0.9em;
+                .error-content {
+                    max-height: 0;
+                    overflow: hidden;
+                    transition: max-height 0.3s ease;
                 }
-                p {
-                    margin: 1.5rem 0;
-                    font-size: 1.1em;
+                .error-item.active .error-content {
+                    max-height: 1000px;
+                }
+                .error-toggle-icon {
+                    font-size: 1.5rem;
+                    font-weight: bold;
+                    color: var(--secondary-color);
+                    transition: transform 0.3s ease;
+                }
+                .error-item.active .error-toggle-icon {
+                    transform: rotate(45deg);
                 }
                 ::selection {
                     background: var(--secondary-color);
                     color: var(--background-color);
+                }
+                .endpoint-method {
+                    display: inline-block;
+                    padding: 0.3rem 0.5rem;
+                    background: #ff79c6;
+                    color: var(--background-color);
+                    border-radius: 4px;
+                    font-weight: bold;
+                    margin-right: 0.5rem;
                 }
             </style>
         </head>
         <body>
             <h1>LeetCode Stats API Documentation</h1>
             
-            <p>This API provides access to LeetCode user statistics and submission data.</p>
+            <p>This API provides access to LeetCode user statistics and submission data. Click on each endpoint to see details.</p>
 
-            <section class="endpoint">
-                <h2>Get User Statistics</h2>
-                <p><code class="method">GET</code> <code class="path">/<span>{username}</span></code></p>
-                
-                <h3>Parameters</h3>
-                <div class="parameter">
-                    <code>username</code> (path parameter): LeetCode username
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h2><span class="endpoint-method">GET</span> User Statistics</h2>
+                    <span class="endpoint-toggle">+</span>
                 </div>
+                <div class="endpoint-content">
+                    <p><code class="path">/<span>{username}</span></code></p>
+                    
+                    <h3>Parameters</h3>
+                    <div class="parameter">
+                        <code>username</code> (path parameter): LeetCode username
+                    </div>
 
-                <h3>Response Format</h3>
-                <pre>
+                    <h3>Response Format</h3>
+                    <pre>
 <code>
-    {
-        "status": "success",
-        "message": "retrieved",
-        "totalSolved": 100,
-        "totalQuestions": 2000,
-        "easySolved": 40,
-        "totalEasy": 500,
-        "mediumSolved": 40,
-        "totalMedium": 1000,
-        "hardSolved": 20,
-        "totalHard": 500,
-        "acceptanceRate": 65.5,
-        "ranking": 100000,
-        "contributionPoints": 50,
+{
+    "status": "success",
+    "message": "retrieved",
+    "totalSolved": 100,
+    "totalQuestions": 2000,
+    "easySolved": 40,
+    "totalEasy": 500,
+    "mediumSolved": 40,
+    "totalMedium": 1000,
+    "hardSolved": 20,
+    "totalHard": 500,
+    "acceptanceRate": 65.5,
+    "ranking": 100000,
+    "contributionPoints": 50,
+    "reputation": 100,
+    "submissionCalendar": {"timestamp": "count"}
+}
+</code>
+                    </pre>
+
+                    <h3>Example</h3>
+                    <pre><code>GET /khan-tashif</code></pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h2><span class="endpoint-method">GET</span> Contest Rankings</h2>
+                    <span class="endpoint-toggle">+</span>
+                </div>
+                <div class="endpoint-content">
+                    <p><code class="path">/<span>{username}</span>/contests</code></p>
+                    
+                    <h3>Parameters</h3>
+                    <div class="parameter">
+                        <code>username</code> (path parameter): LeetCode username
+                    </div>
+
+                    <h3>Response Format</h3>
+                    <pre>
+<code>
+{
+    "status": "success",
+    "message": "retrieved",
+    "attendedContestsCount": 10,
+    "rating": 1500,
+    "globalRanking": 5000,
+    "totalParticipants": 100000,
+    "topPercentage": 5.00,
+    "badge": {
+        "name": "Guardian"
+    },
+    "contestHistory": [
+        {
+            "attended": true,
+            "rating": 1500,
+            "ranking": 1000,
+            "trendDirection": "UP",
+            "problemsSolved": 3,
+            "totalProblems": 4,
+            "finishTimeInSeconds": 3600,
+            "contest": {
+                "title": "Weekly Contest 123",
+                "startTime": 1615694400
+            }
+        }
+    ]
+}
+</code>
+                    </pre>
+
+                    <h3>Example</h3>
+                    <pre><code>GET /khan-tashif/contests</code></pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h2><span class="endpoint-method">GET</span> User Profile</h2>
+                    <span class="endpoint-toggle">+</span>
+                </div>
+                <div class="endpoint-content">
+                    <p><code class="path">/<span>{username}</span>/profile</code></p>
+                    
+                    <h3>Parameters</h3>
+                    <div class="parameter">
+                        <code>username</code> (path parameter): LeetCode username
+                    </div>
+
+                    <h3>Response Format</h3>
+                    <pre>
+<code>
+{
+    "status": "success",
+    "message": "retrieved",
+    "username": "example_user",
+    "githubUrl": "https://github.com/example",
+    "twitterUrl": "https://twitter.com/example",
+    "linkedinUrl": "https://linkedin.com/in/example",
+    "contributions": {
+        "points": 100,
+        "questionCount": 5,
+        "testcaseCount": 10
+    },
+    "profile": {
+        "realName": "Example User",
+        "userAvatar": "https://assets.leetcode.com/avatar.jpg",
+        "birthday": "2000-01-01",
+        "ranking": 10000,
         "reputation": 100,
-        "submissionCalendar": {"timestamp": "count"}
-    }
+        "websites": ["https://example.com"],
+        "countryName": "United States",
+        "company": "Example Corp",
+        "school": "Example University",
+        "skillTags": ["Python", "Algorithms"],
+        "aboutMe": "LeetCode enthusiast",
+        "starRating": 4.5
+    },
+    "badges": [...],
+    "upcomingBadges": [...],
+    "activeBadge": {...},
+    "submitStats": {...},
+    "submissionCalendar": {"timestamp": "count"},
+    "recentSubmissions": [...]
+}
 </code>
-                </pre>
+                    </pre>
 
-                <h3>Example</h3>
-                <pre><code>GET /khan-tashif</code></pre>
-            </section>
-
-            <section class="endpoint">
-                <h2>Get Contest Rankings</h2>
-                <p><code class="method">GET</code> <code class="path">/<span>{username}</span>/contests</code></p>
-                
-                <h3>Parameters</h3>
-                <div class="parameter">
-                    <code>username</code> (path parameter): LeetCode username
+                    <h3>Example</h3>
+                    <pre><code>GET /khan-tashif/profile</code></pre>
                 </div>
+            </div>
 
-                <h3>Response Format</h3>
-                <pre>
-<code>
-    {
-        "status": "success",
-        "message": "retrieved",
-        "attendedContestsCount": 10,
-        "rating": 1500,
-        "globalRanking": 5000,
-        "totalParticipants": 100000,
-        "topPercentage": 5.00,
-        "badge": {
-            "name": "Guardian"
-        },
-        "contestHistory": [
-            {
-                "attended": true,
-                "rating": 1500,
-                "ranking": 1000,
-                "trendDirection": "UP",
-                "problemsSolved": 3,
-                "totalProblems": 4,
-                "finishTimeInSeconds": 3600,
-                "contest": {
-                    "title": "Weekly Contest 123",
-                    "startTime": 1615694400
-                }
-            }
-        ]
-    }
-</code>
-                </pre>
-
-                <h3>Example</h3>
-                <pre><code>GET /khan-tashif/contests</code></pre>
-            </section>
-
-            <section class="endpoint">
-                <h2>Get User Profile</h2>
-                <p><code class="method">GET</code> <code class="path">/<span>{username}</span>/profile</code></p>
-                
-                <h3>Parameters</h3>
-                <div class="parameter">
-                    <code>username</code> (path parameter): LeetCode username
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h2><span class="endpoint-method">GET</span> User Badges</h2>
+                    <span class="endpoint-toggle">+</span>
                 </div>
+                <div class="endpoint-content">
+                    <p><code class="path">/<span>{username}</span>/badges</code></p>
+                    
+                    <h3>Parameters</h3>
+                    <div class="parameter">
+                        <code>username</code> (path parameter): LeetCode username
+                    </div>
 
-                <h3>Response Format</h3>
-                <pre>
+                    <h3>Response Format</h3>
+                    <pre>
 <code>
-    {
-        "status": "success",
-        "message": "retrieved",
-        "username": "example_user",
-        "githubUrl": "https://github.com/example",
-        "twitterUrl": "https://twitter.com/example",
-        "linkedinUrl": "https://linkedin.com/in/example",
-        "contributions": {
-            "points": 100,
-            "questionCount": 5,
-            "testcaseCount": 10
-        },
-        "profile": {
-            "realName": "Example User",
-            "userAvatar": "https://assets.leetcode.com/avatar.jpg",
-            "birthday": "2000-01-01",
-            "ranking": 10000,
-            "reputation": 100,
-            "websites": ["https://example.com"],
-            "countryName": "United States",
-            "company": "Example Corp",
-            "school": "Example University",
-            "skillTags": ["Python", "Algorithms"],
-            "aboutMe": "LeetCode enthusiast",
-            "starRating": 4.5
-        },
-        "badges": [
-            {
-                "id": "1",
-                "displayName": "Problem Solver",
-                "icon": "badge-icon-url",
-                "creationDate": 1609459200
-            }
-        ],
-        "upcomingBadges": [
-            {
-                "name": "Fast Coder",
-                "icon": "upcoming-badge-icon-url"
-            }
-        ],
-        "activeBadge": {
-            "id": "1",
-            "displayName": "Problem Solver",
-            "icon": "badge-icon-url",
-            "creationDate": 1609459200
-        },
-        "submitStats": {
-            "acSubmissionNum": [...],
-            "totalSubmissionNum": [...]
-        },
-        "submissionCalendar": {"timestamp": "count"},
-        "recentSubmissions": [
-            {
-                "title": "Two Sum",
-                "titleSlug": "two-sum",
-                "timestamp": 1609459200,
-                "statusDisplay": "Accepted",
-                "lang": "python3"
-            }
-        ]
-    }
-</code>
-                </pre>
-
-                <h3>Example</h3>
-                <pre><code>GET /khan-tashif/profile</code></pre>
-            </section>
-
-            <section class="endpoint">
-                <h2>Get User Badges</h2>
-                <p><code class="method">GET</code> <code class="path">/<span>{username}</span>/badges</code></p>
-                
-                <h3>Parameters</h3>
-                <div class="parameter">
-                    <code>username</code> (path parameter): LeetCode username
-                </div>
-
-                <h3>Response Format</h3>
-                <pre>
-<code>
-    {
-        "status": "success",
-        "message": "retrieved",
-        "badges": [
-            {
-                "id": "1",
-                "displayName": "Problem Solver",
-                "icon": "badge-icon-url",
-                "creationDate": 1609459200
-            }
-        ],
-        "upcomingBadges": [
-            {
-                "name": "Fast Coder",
-                "icon": "upcoming-badge-icon-url"
-            }
-        ],
-        "activeBadge": {
+{
+    "status": "success",
+    "message": "retrieved",
+    "badges": [
+        {
             "id": "1",
             "displayName": "Problem Solver",
             "icon": "badge-icon-url",
             "creationDate": 1609459200
         }
+    ],
+    "upcomingBadges": [
+        {
+            "name": "Fast Coder",
+            "icon": "upcoming-badge-icon-url"
+        }
+    ],
+    "activeBadge": {
+        "id": "1",
+        "displayName": "Problem Solver",
+        "icon": "badge-icon-url",
+        "creationDate": 1609459200
     }
+}
 </code>
-                </pre>
+                    </pre>
 
-                <h3>Example</h3>
-                <pre><code>GET /khan-tashif/badges</code></pre>
-            </section>
+                    <h3>Example</h3>
+                    <pre><code>GET /khan-tashif/badges</code></pre>
+                </div>
+            </div>
 
-            <section class="endpoint">
+            <div class="error-section">
                 <h2>Error Responses</h2>
                 
-                <div class="error-response">
-                    <h3>User not found</h3>
-                    <pre>
+                <div class="error-item">
+                    <div class="error-toggle">
+                        <h3>User not found</h3>
+                        <span class="error-toggle-icon">+</span>
+                    </div>
+                    <div class="error-content">
+                        <pre>
 <code>{
     "status": "error",
     "message": "user does not exist",
     ...
 }</code>
-                    </pre>
+                        </pre>
+                    </div>
                 </div>
 
-                <div class="error-response">
-                    <h3>Server error</h3>
-                    <pre>
+                <div class="error-item">
+                    <div class="error-toggle">
+                        <h3>Server error</h3>
+                        <span class="error-toggle-icon">+</span>
+                    </div>
+                    <div class="error-content">
+                        <pre>
 <code>
 {
     "status": "error",
@@ -928,9 +962,10 @@ def get_stats_root():
     ...
 }
 </code>
-                    </pre>
+                        </pre>
+                    </div>
                 </div>
-            </section>
+            </div>
 
             <div class="note">
                 <h2>Rate Limiting</h2>
@@ -941,6 +976,33 @@ def get_stats_root():
                 <p>This API is open source and available on <a href="https://github.com/tashifkhan/LeetCode-Stats-API" style="color: var(--secondary-color); text-decoration: none;">GitHub</a>.</p>
                 <p>Try it live at <a href="https://leetcode-stats.tashif.codes" style="color: var(--secondary-color); text-decoration: none;">leetcode-stats.tashif.codes</a></p>
             </footer>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Handle endpoint toggles
+                    const endpoints = document.querySelectorAll('.endpoint');
+                    endpoints.forEach(endpoint => {
+                        const header = endpoint.querySelector('.endpoint-header');
+                        header.addEventListener('click', () => {
+                            endpoint.classList.toggle('active');
+                        });
+                    });
+                    
+                    // Handle error toggles
+                    const errorItems = document.querySelectorAll('.error-item');
+                    errorItems.forEach(item => {
+                        const toggle = item.querySelector('.error-toggle');
+                        toggle.addEventListener('click', () => {
+                            item.classList.toggle('active');
+                        });
+                    });
+                    
+                    // Make the first endpoint active by default for better UX
+                    if (endpoints.length > 0) {
+                        endpoints[0].classList.add('active');
+                    }
+                });
+            </script>
         </body>
         </html>
     """
