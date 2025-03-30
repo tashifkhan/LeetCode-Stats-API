@@ -183,6 +183,24 @@ class ProfileResponse:
             recentSubmissions=[]
         )
 
+@dataclass
+class BadgesResponse:
+    status: str
+    message: str
+    badges: List[Badge]
+    upcomingBadges: List[UpcomingBadge]
+    activeBadge: Optional[Badge]
+
+    @classmethod
+    def error(cls, status: str, message: str):
+        return cls(
+            status=status,
+            message=message,
+            badges=[],
+            upcomingBadges=[],
+            activeBadge=None
+        )
+
 def decode_graphql_json(json_data: dict) -> StatsResponse:
     try:
         data = json_data["data"]
@@ -398,6 +416,50 @@ def decode_profile_json(json_data: dict) -> ProfileResponse:
         )
     except Exception as e:
         return ProfileResponse.error("error", str(e))
+
+def decode_badges_json(json_data: dict) -> BadgesResponse:
+    try:
+        data = json_data["data"]
+        matched_user = data["matchedUser"]
+        
+        # Extract badges
+        badges = []
+        for badge_data in matched_user.get("badges", []):
+            badges.append(Badge(
+                id=badge_data["id"],
+                displayName=badge_data["displayName"],
+                icon=badge_data["icon"],
+                creationDate=badge_data["creationDate"]
+            ))
+        
+        # Extract upcoming badges
+        upcoming_badges = []
+        for badge_data in matched_user.get("upcomingBadges", []):
+            upcoming_badges.append(UpcomingBadge(
+                name=badge_data["name"],
+                icon=badge_data["icon"]
+            ))
+        
+        # Extract active badge
+        active_badge = None
+        if matched_user.get("activeBadge"):
+            badge_data = matched_user["activeBadge"]
+            active_badge = Badge(
+                id=badge_data["id"],
+                displayName=badge_data["displayName"],
+                icon=badge_data["icon"],
+                creationDate=badge_data["creationDate"]
+            )
+            
+        return BadgesResponse(
+            status="success",
+            message="retrieved",
+            badges=badges,
+            upcomingBadges=upcoming_badges,
+            activeBadge=active_badge
+        )
+    except Exception as e:
+        return BadgesResponse.error("error", str(e))
 
 from flask import render_template_string
 
@@ -800,6 +862,49 @@ def get_stats_root():
             </section>
 
             <section class="endpoint">
+                <h2>Get User Badges</h2>
+                <p><code class="method">GET</code> <code class="path">/<span>{username}</span>/badges</code></p>
+                
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <code>username</code> (path parameter): LeetCode username
+                </div>
+
+                <h3>Response Format</h3>
+                <pre>
+<code>
+    {
+        "status": "success",
+        "message": "retrieved",
+        "badges": [
+            {
+                "id": "1",
+                "displayName": "Problem Solver",
+                "icon": "badge-icon-url",
+                "creationDate": 1609459200
+            }
+        ],
+        "upcomingBadges": [
+            {
+                "name": "Fast Coder",
+                "icon": "upcoming-badge-icon-url"
+            }
+        ],
+        "activeBadge": {
+            "id": "1",
+            "displayName": "Problem Solver",
+            "icon": "badge-icon-url",
+            "creationDate": 1609459200
+        }
+    }
+</code>
+                </pre>
+
+                <h3>Example</h3>
+                <pre><code>GET /khan-tashif/badges</code></pre>
+            </section>
+
+            <section class="endpoint">
                 <h2>Error Responses</h2>
                 
                 <div class="error-response">
@@ -1058,6 +1163,59 @@ def get_user_profile(username):
             
     except Exception as e:
         error_response = ProfileResponse.error("error", str(e))
+        return jsonify(asdict(error_response))
+
+@app.route('/<username>/badges')
+def get_user_badges(username):
+    query = """
+    query getUserBadges($username: String!) {
+        matchedUser(username: $username) {
+            badges {
+                id
+                displayName
+                icon
+                creationDate
+            }
+            upcomingBadges {
+                name
+                icon
+            }
+            activeBadge {
+                id
+                displayName
+                icon
+                creationDate
+            }
+        }
+    }
+    """
+    
+    try:
+        response = requests.post(
+            "https://leetcode.com/graphql/",
+            json={
+                "query": query,
+                "variables": {"username": username}
+            },
+            headers={
+                "referer": f"https://leetcode.com/{username}/",
+                "Content-Type": "application/json"
+            }
+        )
+        
+        if response.status_code == 200:
+            json_data = response.json()
+            if "errors" in json_data:
+                error_response = BadgesResponse.error("error", "user does not exist")
+                return jsonify(asdict(error_response))
+            badges_response = decode_badges_json(json_data)
+            return jsonify(asdict(badges_response))
+        else:
+            error_response = BadgesResponse.error("error", f"HTTP {response.status_code}")
+            return jsonify(asdict(error_response))
+            
+    except Exception as e:
+        error_response = BadgesResponse.error("error", str(e))
         return jsonify(asdict(error_response))
 
 if __name__ == '__main__':
