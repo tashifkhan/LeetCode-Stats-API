@@ -4,6 +4,18 @@ A robust RESTful API to fetch and display LeetCode statistics for users, built w
 
 hosted at [leetcode-stats.tashif.codes](https://leetcode-stats.tashif.codes)
 
+## LeetCode Profile Analyzer Dashboard
+
+The root URL (`/`) now features an **interactive LeetCode Profile Analyzer dashboard**. Enter any LeetCode username to instantly view:
+
+- **Profile Card**: Avatar, real name, country, company, school, skills, about me, and social links (GitHub, Twitter, LinkedIn)
+- **Contribution Stats**: Points, question count, testcase count
+- **Key Stats**: Total solved, acceptance rate, ranking, contests attended, contest rating, badges count
+- Modern, responsive UI for quick analysis
+- Powered by the API endpoints below
+
+---
+
 ## Features
 
 - Retrieve user's solved problems count (easy, medium, hard)
@@ -119,7 +131,7 @@ Returns:
 GET /{username}/profile
 ```
 
-Retrieves detailed profile information for a user.
+Retrieves detailed profile information for a user. **All fields are now rendered in the dashboard profile card.**
 
 #### Parameters
 
@@ -129,10 +141,11 @@ Retrieves detailed profile information for a user.
 
 Returns:
 
-- Personal profile information
-- Social media links
-- Contributions
-- Skills
+- Personal profile information (avatar, real name, country, company, school, skills, about me, star rating)
+- Social media links (GitHub, Twitter, LinkedIn)
+- Contributions (points, question count, testcase count)
+- Badges, upcoming badges, active badge
+- Submission stats and calendar
 - Recent submissions
 
 #### Example Response
