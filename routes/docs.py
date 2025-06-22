@@ -379,6 +379,196 @@ def docs():
                         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
                     }
                 }
+                .input-container {
+                    position: relative;
+                    flex: 1;
+                    display: flex;
+                    align-items: center;
+                }
+                
+                .input-container input {
+                    width: 100%;
+                    padding-right: 2.5rem;
+                }
+                
+                .clear-history-btn {
+                    position: absolute;
+                    right: 0.5rem;
+                    background: none;
+                    border: none;
+                    color: var(--text-color);
+                    cursor: pointer;
+                    padding: 0.25rem;
+                    border-radius: 4px;
+                    transition: all 0.2s ease;
+                    opacity: 0.7;
+                    display: none; /* Initially hidden */
+                }
+                
+                .clear-history-btn:hover {
+                    opacity: 1;
+                    color: var(--secondary-color);
+                    background: var(--hover-color);
+                }
+                
+                .clear-history-btn .icon {
+                    width: 1rem;
+                    height: 1rem;
+                }
+
+                .history-dropdown {
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    right: 0;
+                    background: var(--card-background);
+                    border: 1px solid var(--hover-color);
+                    border-top: none;
+                    border-radius: 0 0 8px 8px;
+                    box-shadow: 0 8px 25px rgba(2,12,27,0.3);
+                    z-index: 1000;
+                    opacity: 0;
+                    visibility: hidden;
+                    transform: translateY(-10px);
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    max-height: 300px;
+                    overflow: hidden;
+                }
+                
+                .history-dropdown.active {
+                    opacity: 1;
+                    visibility: visible;
+                    transform: translateY(0);
+                }
+                
+                .dropdown-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 0.75rem 1rem;
+                    border-bottom: 1px solid var(--hover-color);
+                    background: var(--hover-color);
+                }
+                
+                .dropdown-header span {
+                    color: var(--heading-color);
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                }
+                
+                .clear-all-btn {
+                    background: none;
+                    border: none;
+                    color: var(--text-color);
+                    cursor: pointer;
+                    padding: 0.25rem;
+                    border-radius: 4px;
+                    transition: all 0.2s ease;
+                    opacity: 0.7;
+                }
+                
+                .clear-all-btn:hover {
+                    opacity: 1;
+                    color: var(--secondary-color);
+                    background: var(--card-background);
+                }
+                
+                .clear-all-btn .icon {
+                    width: 1rem;
+                    height: 1rem;
+                }
+                
+                .history-list {
+                    max-height: 250px;
+                    overflow-y: auto;
+                }
+                
+                .history-item {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 0.75rem 1rem;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    border-bottom: 1px solid rgba(136, 146, 176, 0.1);
+                }
+                
+                .history-item:last-child {
+                    border-bottom: none;
+                }
+                
+                .history-item:hover {
+                    background: var(--hover-color);
+                }
+                
+                .history-item.selected {
+                    background: var(--secondary-color);
+                    color: var(--background-color);
+                }
+                
+                .history-username {
+                    color: var(--text-color);
+                    font-weight: 500;
+                    flex: 1;
+                }
+                
+                .history-item:hover .history-username,
+                .history-item.selected .history-username {
+                    color: inherit;
+                }
+                
+                .history-delete-btn {
+                    background: none;
+                    border: none;
+                    color: var(--text-color);
+                    cursor: pointer;
+                    padding: 0.25rem;
+                    border-radius: 4px;
+                    transition: all 0.2s ease;
+                    opacity: 0;
+                    margin-left: 0.5rem;
+                }
+                
+                .history-item:hover .history-delete-btn {
+                    opacity: 0.7;
+                }
+                
+                .history-delete-btn:hover {
+                    opacity: 1 !important;
+                    color: #ff6b6b;
+                    background: rgba(255, 107, 107, 0.1);
+                }
+                
+                .history-delete-btn .icon {
+                    width: 0.8rem;
+                    height: 0.8rem;
+                }
+                
+                .history-empty {
+                    padding: 1rem;
+                    text-align: center;
+                    color: var(--text-color);
+                    font-style: italic;
+                    opacity: 0.7;
+                }
+
+                /* Scrollbar styling for dropdown */
+                .history-list::-webkit-scrollbar {
+                    width: 6px;
+                }
+                
+                .history-list::-webkit-scrollbar-track {
+                    background: var(--code-background);
+                }
+                
+                .history-list::-webkit-scrollbar-thumb {
+                    background: var(--hover-color);
+                    border-radius: 3px;
+                }
+                
+                .history-list::-webkit-scrollbar-thumb:hover {
+                    background: var(--secondary-color);
+                }
             </style>
         </head>
         <body>
@@ -386,7 +576,25 @@ def docs():
             <div class="analyzer-form">
                 <h3>Analyze a LeetCode Profile</h3>
                 <div class="input-group">
-                    <input type="text" id="leetcode-username" placeholder="Enter LeetCode username (e.g., khan-tashif)" />
+                    <div class="input-container">
+                        <input type="text" id="leetcode-username" placeholder="Enter LeetCode username (e.g., khan-tashif)" autocomplete="off" />
+                        <button type="button" id="leetcode-clear-history" class="clear-history-btn" title="Clear input">
+                            <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                            </svg>
+                        </button>
+                        <div id="leetcode-history-dropdown" class="history-dropdown">
+                            <div class="dropdown-header">
+                                <span>Recent Searches</span>
+                                <button type="button" id="leetcode-clear-all-history" class="clear-all-btn" title="Clear all history">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div id="leetcode-history-list" class="history-list"></div>
+                        </div>
+                    </div>
                     <button onclick="analyzeLeetCodeUser()" class="analyze-button">Analyze</button>
                 </div>
                 <div id="loading" class="loading" style="display: none;">
@@ -471,6 +679,7 @@ def docs():
                         // Render user info
                         renderUserInfoCard(profile);
                         results.style.display = 'block';
+                        saveLeetCodeUserHistory(username);
                     } catch (e) {
                         alert('Failed to fetch LeetCode data. Please check the username and try again.');
                     } finally {
@@ -516,8 +725,150 @@ def docs():
                                 analyzeLeetCodeUser();
                             }
                         });
+                        input.addEventListener('focus', showLeetCodeHistoryDropdown);
+                        input.addEventListener('input', () => {
+                            const clearBtn = document.getElementById('leetcode-clear-history');
+                            if (input.value) {
+                                clearBtn.style.display = 'block';
+                            } else {
+                                clearBtn.style.display = 'none';
+                            }
+                        });
                     }
+
+                    document.addEventListener('click', function(e) {
+                        const inputContainer = document.querySelector('.input-container');
+                        if (!inputContainer.contains(e.target)) {
+                            hideLeetCodeHistoryDropdown();
+                        }
+                    });
+
+                    const clearBtn = document.getElementById('leetcode-clear-history');
+                    if (clearBtn) {
+                        clearBtn.addEventListener('click', () => {
+                            const input = document.getElementById('leetcode-username');
+                            input.value = '';
+                            clearBtn.style.display = 'none';
+                            input.focus();
+                        });
+                    }
+
+                    const clearAllBtn = document.getElementById('leetcode-clear-all-history');
+                    if (clearAllBtn) {
+                        clearAllBtn.addEventListener('click', clearLeetCodeUserHistory);
+                    }
+
+                    updateLeetCodeHistoryDropdown();
                 });
+
+                const LEETCODE_HISTORY_KEY = 'leetcode_username_history';
+                const MAX_HISTORY_ITEMS = 10;
+
+                function loadLeetCodeUserHistory() {
+                    try {
+                        const history = localStorage.getItem(LEETCODE_HISTORY_KEY);
+                        return history ? JSON.parse(history) : [];
+                    } catch (error) {
+                        console.error('Error loading LeetCode user history:', error);
+                        return [];
+                    }
+                }
+
+                function saveLeetCodeUserHistory(username) {
+                    if (!username || username.trim() === '') return;
+                    
+                    try {
+                        const history = loadLeetCodeUserHistory();
+                        const usernameLower = username.toLowerCase().trim();
+                        
+                        const filteredHistory = history.filter(item => item.toLowerCase() !== usernameLower);
+                        
+                        filteredHistory.unshift(username.trim());
+                        
+                        const trimmedHistory = filteredHistory.slice(0, MAX_HISTORY_ITEMS);
+                        
+                        localStorage.setItem(LEETCODE_HISTORY_KEY, JSON.stringify(trimmedHistory));
+                        updateLeetCodeHistoryDropdown();
+                    } catch (error) {
+                        console.error('Error saving LeetCode user history:', error);
+                    }
+                }
+
+                function updateLeetCodeHistoryDropdown() {
+                    const historyList = document.getElementById('leetcode-history-list');
+                    if (!historyList) return;
+                    
+                    const history = loadLeetCodeUserHistory();
+                    historyList.innerHTML = '';
+                    
+                    if (history.length === 0) {
+                        historyList.innerHTML = '<div class="history-empty">No recent searches</div>';
+                        document.getElementById('leetcode-clear-all-history').style.display = 'none';
+                        return;
+                    }
+
+                    document.getElementById('leetcode-clear-all-history').style.display = 'block';
+                    
+                    history.forEach((username, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'history-item';
+                        item.innerHTML = `
+                            <span class="history-username">${username}</span>
+                            <button type="button" class="history-delete-btn" data-index="${index}" title="Remove from history">
+                                <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                </svg>
+                            </button>
+                        `;
+                        
+                        item.addEventListener('click', (e) => {
+                            if (!e.target.closest('.history-delete-btn')) {
+                                document.getElementById('leetcode-username').value = username;
+                                hideLeetCodeHistoryDropdown();
+                                analyzeLeetCodeUser();
+                            }
+                        });
+                        
+                        const deleteBtn = item.querySelector('.history-delete-btn');
+                        deleteBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            removeLeetCodeUserFromHistory(index);
+                        });
+                        
+                        historyList.appendChild(item);
+                    });
+                }
+
+                function showLeetCodeHistoryDropdown() {
+                    const dropdown = document.getElementById('leetcode-history-dropdown');
+                    if (dropdown) dropdown.classList.add('active');
+                }
+
+                function hideLeetCodeHistoryDropdown() {
+                    const dropdown = document.getElementById('leetcode-history-dropdown');
+                    if (dropdown) dropdown.classList.remove('active');
+                }
+
+                function removeLeetCodeUserFromHistory(index) {
+                    try {
+                        const history = loadLeetCodeUserHistory();
+                        history.splice(index, 1);
+                        localStorage.setItem(LEETCODE_HISTORY_KEY, JSON.stringify(history));
+                        updateLeetCodeHistoryDropdown();
+                    } catch (error) {
+                        console.error('Error removing from LeetCode history:', error);
+                    }
+                }
+
+                function clearLeetCodeUserHistory() {
+                    try {
+                        localStorage.removeItem(LEETCODE_HISTORY_KEY);
+                        updateLeetCodeHistoryDropdown();
+                        hideLeetCodeHistoryDropdown();
+                    } catch (error) {
+                        console.error('Error clearing LeetCode user history:', error);
+                    }
+                }
             </script>
             <h1>LeetCode Stats API Documentation</h1>
             
