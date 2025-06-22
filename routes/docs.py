@@ -674,7 +674,7 @@ def docs():
                         document.getElementById('acceptance-rate').textContent = stats.acceptanceRate ? stats.acceptanceRate + '%' : '-';
                         document.getElementById('ranking').textContent = stats.ranking ?? '-';
                         document.getElementById('contests-attended').textContent = contests.attendedContestsCount ?? '-';
-                        document.getElementById('contest-rating').textContent = contests.rating ?? '-';
+                        document.getElementById('contest-rating').textContent = contests.rating != null ? Math.trunc(contests.rating) : '-';
                         document.getElementById('badges-count').textContent = badges.badges ? badges.badges.length : '-';
                         // Render user info
                         renderUserInfoCard(profile);
