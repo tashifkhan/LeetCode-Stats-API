@@ -36,3 +36,12 @@ class LeetCodeService:
             return None, error
             
         return ResponseDecoder.decode_badges(json_data), None
+
+    @staticmethod
+    def get_user_heatmap(username):
+        """Fetch and process user heatmap data"""
+        json_data, error = LeetCodeAPI.fetch_user_heatmap(username)
+        if error:
+            return None, error
+
+        return ResponseDecoder.decode_heatmap(json_data), None

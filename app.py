@@ -6,6 +6,7 @@ from routes.stats import stats_bp
 from routes.contests import contests_bp
 from routes.profiles import profiles_bp
 from routes.badges import badges_bp
+from routes.heatmap import heatmap_bp
 from routes.docs import docs_bp
 
 app = Flask(__name__)
@@ -18,6 +19,7 @@ app.register_blueprint(stats_bp)
 app.register_blueprint(contests_bp)
 app.register_blueprint(profiles_bp)
 app.register_blueprint(badges_bp)
+app.register_blueprint(heatmap_bp)
 app.register_blueprint(docs_bp)
 
 if __name__ == '__main__':
