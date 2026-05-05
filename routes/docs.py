@@ -968,6 +968,65 @@ def docs():
 
             <div class="endpoint">
                 <div class="endpoint-header">
+                    <h2><span class="endpoint-method">GET</span> Contribution Heatmap</h2>
+                    <span class="endpoint-toggle">+</span>
+                </div>
+                <div class="endpoint-content">
+                    <p><code class="path">/<span>{username}</span>/heatmap</code></p>
+
+                    <h3>Parameters</h3>
+                    <div class="parameter">
+                        <code>username</code> (path parameter): LeetCode username
+                    </div>
+
+                    <h3>Response Format</h3>
+                    <pre>
+<code>
+{
+    "status": "success",
+    "message": "retrieved",
+    "username": "example_user",
+    "startDate": "2024-01-01",
+    "endDate": "2024-12-31",
+    "firstActiveDate": "2024-01-03",
+    "lastActiveDate": "2024-12-29",
+    "totalSubmissions": 320,
+    "activeDays": 120,
+    "currentStreak": 5,
+    "longestStreak": 19,
+    "maxDailySubmissions": 12,
+    "dailyContributions": [
+        {
+            "date": "2024-01-01",
+            "timestamp": 1704067200,
+            "count": 0,
+            "level": 0
+        },
+        {
+            "date": "2024-01-02",
+            "timestamp": 1704153600,
+            "count": 3,
+            "level": 1
+        }
+    ],
+    "yearlyContributions": [
+        {
+            "year": 2024,
+            "totalSubmissions": 320,
+            "activeDays": 120
+        }
+    ]
+}
+</code>
+                    </pre>
+
+                    <h3>Example</h3>
+                    <pre><code>GET /khan-tashif/heatmap</code></pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
                     <h2><span class="endpoint-method">GET</span> User Profile</h2>
                     <span class="endpoint-toggle">+</span>
                 </div>
