@@ -186,6 +186,67 @@ Returns:
 }
 ```
 
+### Get Contribution Heatmap Data
+
+```
+GET /{username}/heatmap
+```
+
+Retrieves normalized daily contribution data and summary metadata for building a heatmap UI.
+
+#### Parameters
+
+- `username` (path): LeetCode username
+
+#### Response
+
+Returns:
+
+- Daily contribution entries including zero-count days in the returned range
+- Current streak and longest streak
+- Per-year totals for quick aggregation
+- Max daily submissions for color scaling
+
+#### Example Response
+
+```json
+{
+	"status": "success",
+	"message": "retrieved",
+	"username": "example_user",
+	"startDate": "2024-01-01",
+	"endDate": "2024-12-31",
+	"firstActiveDate": "2024-01-03",
+	"lastActiveDate": "2024-12-29",
+	"totalSubmissions": 320,
+	"activeDays": 120,
+	"currentStreak": 5,
+	"longestStreak": 19,
+	"maxDailySubmissions": 12,
+	"dailyContributions": [
+		{
+			"date": "2024-01-01",
+			"timestamp": 1704067200,
+			"count": 0,
+			"level": 0
+		},
+		{
+			"date": "2024-01-02",
+			"timestamp": 1704153600,
+			"count": 3,
+			"level": 1
+		}
+	],
+	"yearlyContributions": [
+		{
+			"year": 2024,
+			"totalSubmissions": 320,
+			"activeDays": 120
+		}
+	]
+}
+```
+
 ### Get User Badges
 
 ```

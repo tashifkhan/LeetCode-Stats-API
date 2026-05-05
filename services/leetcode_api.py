@@ -1,11 +1,14 @@
 import requests
 import json
+import math
 from decimal import Decimal, ROUND_HALF_UP
+from datetime import date, datetime, timedelta, timezone
 
 from models.stats import StatsResponse
 from models.contests import ContestRankingResponse, ContestBadge, ContestHistoryEntry, ContestInfo
 from models.profiles import ProfileResponse, UserProfile, Contribution, RecentSubmission
 from models.badges import BadgesResponse, Badge, UpcomingBadge
+from models.heatmap import HeatmapResponse, HeatmapDay, YearlyContribution
 from config import Config
 
 class LeetCodeAPI:
@@ -176,6 +179,19 @@ class LeetCodeAPI:
         """
         
         return LeetCodeAPI._make_request(query, username)
+
+    @staticmethod
+    def fetch_user_heatmap(username):
+        query = """
+        query getUserHeatmap($username: String!) {
+            matchedUser(username: $username) {
+                username
+                submissionCalendar
+            }
+        }
+        """
+
+        return LeetCodeAPI._make_request(query, username)
     
     @staticmethod
     def _make_request(query, username):
@@ -201,6 +217,63 @@ class LeetCodeAPI:
             return None, str(e)
 
 class ResponseDecoder:
+    @staticmethod
+    def _parse_submission_calendar(raw_calendar):
+        if not raw_calendar:
+            return {}
+
+        if isinstance(raw_calendar, dict):
+            return raw_calendar
+
+        return json.loads(raw_calendar)
+
+    @staticmethod
+    def _utc_today():
+        return datetime.now(timezone.utc).date()
+
+    @staticmethod
+    def _calculate_heatmap_level(count, max_daily_submissions):
+        if count <= 0 or max_daily_submissions <= 0:
+            return 0
+
+        return min(4, max(1, math.ceil((count / max_daily_submissions) * 4)))
+
+    @staticmethod
+    def _calculate_longest_streak(active_dates):
+        if not active_dates:
+            return 0
+
+        longest_streak = 1
+        current_streak = 1
+
+        for index in range(1, len(active_dates)):
+            if active_dates[index] - active_dates[index - 1] == timedelta(days=1):
+                current_streak += 1
+                longest_streak = max(longest_streak, current_streak)
+            else:
+                current_streak = 1
+
+        return longest_streak
+
+    @staticmethod
+    def _calculate_current_streak(date_counts, today):
+        streak_end = None
+        if date_counts.get(today, 0) > 0:
+            streak_end = today
+        elif date_counts.get(today - timedelta(days=1), 0) > 0:
+            streak_end = today - timedelta(days=1)
+
+        if streak_end is None:
+            return 0
+
+        current_streak = 0
+        cursor = streak_end
+        while date_counts.get(cursor, 0) > 0:
+            current_streak += 1
+            cursor -= timedelta(days=1)
+
+        return current_streak
+
     @staticmethod
     def decode_stats(json_data):
         try:
@@ -234,7 +307,9 @@ class ResponseDecoder:
             reputation = matched_user["profile"]["reputation"]
             ranking = matched_user["profile"]["ranking"]
 
-            submission_calendar = json.loads(matched_user["submissionCalendar"])
+            submission_calendar = ResponseDecoder._parse_submission_calendar(
+                matched_user.get("submissionCalendar")
+            )
 
             return StatsResponse(
                 status="success",
@@ -388,7 +463,9 @@ class ResponseDecoder:
             }
             
             # Extract submission calendar
-            submission_calendar = json.loads(matched_user["submissionCalendar"])
+            submission_calendar = ResponseDecoder._parse_submission_calendar(
+                matched_user.get("submissionCalendar")
+            )
             
             # Extract recent submissions
             recent_submissions = []
@@ -464,3 +541,95 @@ class ResponseDecoder:
             )
         except Exception as e:
             return BadgesResponse.error("error", str(e))
+
+    @staticmethod
+    def decode_heatmap(json_data):
+        try:
+            data = json_data["data"]
+            matched_user = data["matchedUser"]
+            username = matched_user["username"]
+            submission_calendar = ResponseDecoder._parse_submission_calendar(
+                matched_user.get("submissionCalendar")
+            )
+
+            date_counts = {}
+            for timestamp, count in submission_calendar.items():
+                contribution_date = datetime.fromtimestamp(int(timestamp), tz=timezone.utc).date()
+                date_counts[contribution_date] = date_counts.get(contribution_date, 0) + int(count)
+
+            if not date_counts:
+                return HeatmapResponse(
+                    status="success",
+                    message="retrieved",
+                    username=username,
+                    startDate="",
+                    endDate="",
+                    firstActiveDate="",
+                    lastActiveDate="",
+                    totalSubmissions=0,
+                    activeDays=0,
+                    currentStreak=0,
+                    longestStreak=0,
+                    maxDailySubmissions=0,
+                    dailyContributions=[],
+                    yearlyContributions=[]
+                )
+
+            today = ResponseDecoder._utc_today()
+            active_dates = sorted(date_counts)
+            first_active_date = active_dates[0]
+            last_active_date = active_dates[-1]
+            start_date = date(first_active_date.year, 1, 1)
+            end_date = max(today, last_active_date)
+            total_submissions = sum(date_counts.values())
+            active_days = len(active_dates)
+            max_daily_submissions = max(date_counts.values())
+
+            yearly_totals = {}
+            for contribution_date, count in date_counts.items():
+                year = contribution_date.year
+                if year not in yearly_totals:
+                    yearly_totals[year] = {"totalSubmissions": 0, "activeDays": 0}
+
+                yearly_totals[year]["totalSubmissions"] += count
+                yearly_totals[year]["activeDays"] += 1
+
+            daily_contributions = []
+            cursor = start_date
+            while cursor <= end_date:
+                count = date_counts.get(cursor, 0)
+                timestamp = int(datetime(cursor.year, cursor.month, cursor.day, tzinfo=timezone.utc).timestamp())
+                daily_contributions.append(HeatmapDay(
+                    date=cursor.isoformat(),
+                    timestamp=timestamp,
+                    count=count,
+                    level=ResponseDecoder._calculate_heatmap_level(count, max_daily_submissions)
+                ))
+                cursor += timedelta(days=1)
+
+            yearly_contributions = []
+            for year in sorted(yearly_totals):
+                yearly_contributions.append(YearlyContribution(
+                    year=year,
+                    totalSubmissions=yearly_totals[year]["totalSubmissions"],
+                    activeDays=yearly_totals[year]["activeDays"]
+                ))
+
+            return HeatmapResponse(
+                status="success",
+                message="retrieved",
+                username=username,
+                startDate=start_date.isoformat(),
+                endDate=end_date.isoformat(),
+                firstActiveDate=first_active_date.isoformat(),
+                lastActiveDate=last_active_date.isoformat(),
+                totalSubmissions=total_submissions,
+                activeDays=active_days,
+                currentStreak=ResponseDecoder._calculate_current_streak(date_counts, today),
+                longestStreak=ResponseDecoder._calculate_longest_streak(active_dates),
+                maxDailySubmissions=max_daily_submissions,
+                dailyContributions=daily_contributions,
+                yearlyContributions=yearly_contributions
+            )
+        except Exception as e:
+            return HeatmapResponse.error("error", str(e))
