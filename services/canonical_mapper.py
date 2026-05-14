@@ -1,35 +1,27 @@
-"""Builds the unified cross-platform card for LeetCode by reusing the existing
+"""Builds the canonical cross-platform card for LeetCode by reusing the existing
 ``LeetCodeService`` fetchers and the new skill-stats topic aggregation.
 
 Each section has a pure ``*_from`` converter (takes an already-decoded legacy
-response) and a ``build_*`` fetcher (decoded response -> unified). Legacy routes
+response) and a ``build_*`` fetcher (decoded response -> canonical). Legacy routes
 call the converters on the response they already fetched to avoid a second
-network round-trip; the canonical ``/card`` endpoint uses ``build_card``.
+network round-trip; clients compose full cards by calling the section endpoints.
 
-See ../UNIFIED_SCHEMA.md for the wire format.
+See ../CANONICAL_SCHEMA.md for the wire format.
 """
 
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from models.unified import (
-    BadgeItem,
-    ContestHistoryItem,
-    RatingPoint,
-    TopicCount,
-    UnifiedBadges,
-    UnifiedCard,
-    UnifiedContests,
-    UnifiedHeatmap,
-    UnifiedProfile,
-    UnifiedRating,
-    UnifiedSocial,
-    UnifiedStats,
-    UnifiedSummary,
-    HeatDay,
-    YearContribution,
-)
+from models.canonical.badges import BadgeItem, Badges
+from models.canonical.card import Card
+from models.canonical.contests import ContestHistoryItem, Contests
+from models.canonical.heatmap import HeatDay, Heatmap, YearContribution
+from models.canonical.profile import Profile, Social
+from models.canonical.rating import RatingPoint, Rating
+from models.canonical.stats import TopicCount, Stats
+from models.canonical.summary import Summary
 from services.leetcode_service import LeetCodeService
+from services.heatmap_window import window_heatmap
 
 
 def _ts_to_date(timestamp) -> Optional[str]:
@@ -41,13 +33,13 @@ def _ts_to_date(timestamp) -> Optional[str]:
         return None
 
 
-# --- pure converters (decoded legacy response -> unified section) -----------
+# --- pure converters (decoded legacy response -> canonical section) -----------
 
-def profile_from(profile_response, username: str) -> UnifiedProfile:
+def profile_from(profile_response, username: str) -> Profile:
     if profile_response is None:
-        return UnifiedProfile(username=username)
+        return Profile(username=username)
     p = profile_response.profile
-    return UnifiedProfile(
+    return Profile(
         displayName=p.realName or None,
         username=profile_response.username or username,
         avatar=p.userAvatar or None,
@@ -57,7 +49,7 @@ def profile_from(profile_response, username: str) -> UnifiedProfile:
         company=p.company or None,
         bio=p.aboutMe or None,
         websites=list(p.websites or []),
-        social=UnifiedSocial(
+        social=Social(
             github=profile_response.githubUrl,
             twitter=profile_response.twitterUrl,
             linkedin=profile_response.linkedinUrl,
@@ -66,10 +58,10 @@ def profile_from(profile_response, username: str) -> UnifiedProfile:
     )
 
 
-def stats_from(stats_response, topics: List[TopicCount]) -> UnifiedStats:
+def stats_from(stats_response, topics: List[TopicCount]) -> Stats:
     if stats_response is None:
-        return UnifiedStats(topicAnalysis=topics)
-    return UnifiedStats(
+        return Stats(topicAnalysis=topics)
+    return Stats(
         totalSolved=stats_response.totalSolved,
         totalQuestions=stats_response.totalQuestions,
         acceptanceRate=stats_response.acceptanceRate,
@@ -82,9 +74,9 @@ def stats_from(stats_response, topics: List[TopicCount]) -> UnifiedStats:
     )
 
 
-def contests_from(contest_response) -> UnifiedContests:
+def contests_from(contest_response) -> Contests:
     if contest_response is None:
-        return UnifiedContests()
+        return Contests()
     history = [
         ContestHistoryItem(
             name=entry.contest.title,
@@ -99,7 +91,7 @@ def contests_from(contest_response) -> UnifiedContests:
         if entry.attended
     ]
     max_rating = max((h.rating for h in history if h.rating is not None), default=None)
-    return UnifiedContests(
+    return Contests(
         count=contest_response.attendedContestsCount,
         rating=contest_response.rating or None,
         maxRating=max_rating,
@@ -110,19 +102,19 @@ def contests_from(contest_response) -> UnifiedContests:
     )
 
 
-def rating_from(contests: UnifiedContests) -> UnifiedRating:
+def rating_from(contests: Contests) -> Rating:
     history = [
         RatingPoint(timestamp=h.timestamp, rating=h.rating, contestName=h.name)
         for h in contests.history
         if h.rating is not None
     ]
-    return UnifiedRating(current=contests.rating, max=contests.maxRating, history=history)
+    return Rating(current=contests.rating, max=contests.maxRating, history=history)
 
 
-def heatmap_from(heatmap_response) -> UnifiedHeatmap:
+def heatmap_from(heatmap_response) -> Heatmap:
     if heatmap_response is None:
-        return UnifiedHeatmap()
-    return UnifiedHeatmap(
+        return Heatmap()
+    return Heatmap(
         totalSubmissions=heatmap_response.totalSubmissions,
         totalActiveDays=heatmap_response.activeDays,
         currentStreak=heatmap_response.currentStreak,
@@ -145,9 +137,9 @@ def heatmap_from(heatmap_response) -> UnifiedHeatmap:
     )
 
 
-def badges_from(badges_response) -> UnifiedBadges:
+def badges_from(badges_response) -> Badges:
     if badges_response is None:
-        return UnifiedBadges()
+        return Badges()
     items = [
         BadgeItem(id=b.id, name=b.displayName, icon=b.icon, level=None)
         for b in badges_response.badges
@@ -156,10 +148,10 @@ def badges_from(badges_response) -> UnifiedBadges:
     if badges_response.activeBadge:
         ab = badges_response.activeBadge
         active = BadgeItem(id=ab.id, name=ab.displayName, icon=ab.icon, level=None)
-    return UnifiedBadges(count=len(items), active=active, list=items)
+    return Badges(count=len(items), active=active, list=items)
 
 
-# --- fetchers (network -> unified section) ----------------------------------
+# --- fetchers (network -> canonical section) ----------------------------------
 
 def _topics(username: str) -> List[TopicCount]:
     skill_data, skill_error = LeetCodeService.get_skill_stats(username)
@@ -168,39 +160,39 @@ def _topics(username: str) -> List[TopicCount]:
     return [TopicCount(topic=t["topic"], count=t["count"]) for t in skill_data]
 
 
-def build_profile(username: str) -> UnifiedProfile:
+def build_profile(username: str) -> Profile:
     response, _ = LeetCodeService.get_user_profile(username)
     return profile_from(response, username)
 
 
-def build_stats(username: str) -> UnifiedStats:
+def build_stats(username: str) -> Stats:
     response, _ = LeetCodeService.get_user_stats(username)
     return stats_from(response, _topics(username))
 
 
-def build_contests(username: str) -> UnifiedContests:
+def build_contests(username: str) -> Contests:
     response, _ = LeetCodeService.get_contest_ranking(username)
     return contests_from(response)
 
 
-def build_rating(username: str, contests: Optional[UnifiedContests] = None) -> UnifiedRating:
+def build_rating(username: str, contests: Optional[Contests] = None) -> Rating:
     if contests is None:
         contests = build_contests(username)
     return rating_from(contests)
 
 
-def build_heatmap(username: str) -> UnifiedHeatmap:
+def build_heatmap(username: str) -> Heatmap:
     response, _ = LeetCodeService.get_user_heatmap(username)
-    return heatmap_from(response)
+    return window_heatmap(heatmap_from(response), "all", None)
 
 
-def build_badges(username: str) -> UnifiedBadges:
+def build_badges(username: str) -> Badges:
     response, _ = LeetCodeService.get_user_badges(username)
     return badges_from(response)
 
 
-def summary_from(card: UnifiedCard) -> UnifiedSummary:
-    return UnifiedSummary(
+def summary_from(card: Card) -> Summary:
+    return Summary(
         totalSolved=card.stats.totalSolved,
         totalActiveDays=card.heatmap.totalActiveDays,
         totalContests=card.contests.count,
@@ -211,10 +203,10 @@ def summary_from(card: UnifiedCard) -> UnifiedSummary:
     )
 
 
-def build_card(username: str) -> UnifiedCard:
-    """Fetch every section and compose the full unified card."""
+def build_card(username: str) -> Card:
+    """Fetch every section and compose the full canonical card."""
     contests = build_contests(username)
-    return UnifiedCard(
+    return Card(
         username=username,
         profile=build_profile(username),
         stats=build_stats(username),
