@@ -29,6 +29,7 @@ pydantic==2.13.4
 pydantic-core==2.46.4
     # via pydantic
 requests==2.34.2
+redis>=5.2.0
     # via leetcode-api
 starlette==1.2.0
     # via fastapi
