@@ -1,7 +1,7 @@
 import os
 
 class Config:
-    ENV = os.environ.get('FLASK_ENV', 'production')
+    ENV = os.environ.get('APP_ENV', os.environ.get('FLASK_ENV', 'production'))
     DEBUG = ENV == 'development'
     PORT = int(os.environ.get('PORT', 58352))
     HOST = os.environ.get('HOST', '0.0.0.0')

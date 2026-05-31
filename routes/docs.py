@@ -1,9 +1,10 @@
-from flask import Blueprint, render_template_string
+from fastapi import APIRouter
+from fastapi.responses import HTMLResponse
 
-docs_bp = Blueprint("docs", __name__)
+router = APIRouter()
 
 
-@docs_bp.route("/")
+@router.get("/", response_class=HTMLResponse, include_in_schema=False)
 def docs():
     html = """
         <!DOCTYPE html>
@@ -1207,4 +1208,4 @@ def docs():
         </body>
         </html>
     """
-    return render_template_string(html)
+    return HTMLResponse(content=html)

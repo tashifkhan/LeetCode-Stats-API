@@ -182,11 +182,93 @@ class LeetCodeAPI:
 
     @staticmethod
     def fetch_user_heatmap(username):
-        query = """
+        """Fetch the full submission calendar across every active year.
+
+        LeetCode's flat ``matchedUser.submissionCalendar`` only returns the
+        trailing ~12 months (empty for users inactive recently). The current
+        field is ``userCalendar(year:)``; ``userCalendar.activeYears`` lists the
+        years with activity. We fetch each active year and merge them into a
+        single timestamp->count calendar that ``decode_heatmap`` consumes.
+        """
+        base_query = """
         query getUserHeatmap($username: String!) {
             matchedUser(username: $username) {
                 username
-                submissionCalendar
+                userCalendar {
+                    activeYears
+                    submissionCalendar
+                }
+            }
+        }
+        """
+
+        json_data, error = LeetCodeAPI._make_request(base_query, username)
+        if error:
+            return None, error
+
+        matched = (json_data.get("data") or {}).get("matchedUser")
+        if not matched:
+            return None, "user does not exist"
+
+        merged = {}
+
+        def _merge(cal):
+            if not cal:
+                return
+            try:
+                parsed = json.loads(cal) if isinstance(cal, str) else cal
+            except (ValueError, TypeError):
+                return
+            for timestamp, count in (parsed or {}).items():
+                merged[timestamp] = merged.get(timestamp, 0) + int(count)
+
+        user_calendar = matched.get("userCalendar") or {}
+        _merge(user_calendar.get("submissionCalendar"))
+        active_years = user_calendar.get("activeYears") or []
+
+        year_query = """
+        query getUserYearHeatmap($username: String!, $year: Int!) {
+            matchedUser(username: $username) {
+                userCalendar(year: $year) {
+                    submissionCalendar
+                }
+            }
+        }
+        """
+
+        for year in active_years:
+            year_data, year_error = LeetCodeAPI._make_request_with_vars(
+                year_query, {"username": username, "year": int(year)}
+            )
+            if year_error or not year_data:
+                continue
+            year_calendar = (
+                ((year_data.get("data") or {}).get("matchedUser") or {})
+                .get("userCalendar")
+                or {}
+            )
+            _merge(year_calendar.get("submissionCalendar"))
+
+        return {
+            "data": {
+                "matchedUser": {
+                    "username": matched.get("username") or username,
+                    "submissionCalendar": merged,
+                }
+            }
+        }, None
+
+    @staticmethod
+    def fetch_skill_stats(username):
+        """Fetch per-tag solved counts used to build the DSA topic analysis."""
+        query = """
+        query skillStats($username: String!) {
+            matchedUser(username: $username) {
+                tagProblemCounts {
+                    advanced { tagName tagSlug problemsSolved }
+                    intermediate { tagName tagSlug problemsSolved }
+                    fundamental { tagName tagSlug problemsSolved }
+                }
             }
         }
         """
@@ -195,16 +277,20 @@ class LeetCodeAPI:
     
     @staticmethod
     def _make_request(query, username):
+        return LeetCodeAPI._make_request_with_vars(query, {"username": username})
+
+    @staticmethod
+    def _make_request_with_vars(query, variables):
         try:
             response = requests.post(
                 Config.LEETCODE_API_URL,
                 json={
                     "query": query,
-                    "variables": {"username": username}
+                    "variables": variables
                 },
-                headers=Config.get_headers(username)
+                headers=Config.get_headers(variables.get("username", ""))
             )
-            
+
             if response.status_code == 200:
                 json_data = response.json()
                 if "errors" in json_data:
@@ -212,7 +298,7 @@ class LeetCodeAPI:
                 return json_data, None
             else:
                 return None, f"HTTP {response.status_code}"
-                
+
         except Exception as e:
             return None, str(e)
 
@@ -541,6 +627,34 @@ class ResponseDecoder:
             )
         except Exception as e:
             return BadgesResponse.error("error", str(e))
+
+    @staticmethod
+    def decode_skill_stats(json_data):
+        """Aggregate tagProblemCounts across tiers into a sorted topic list.
+
+        Returns a list of ``{"topic": str, "count": int}`` dicts, highest first.
+        """
+        try:
+            matched_user = json_data["data"]["matchedUser"]
+            tag_counts = (matched_user or {}).get("tagProblemCounts") or {}
+
+            aggregated = {}
+            for tier in ("advanced", "intermediate", "fundamental"):
+                for entry in tag_counts.get(tier) or []:
+                    name = entry.get("tagName")
+                    solved = int(entry.get("problemsSolved") or 0)
+                    if not name or solved <= 0:
+                        continue
+                    aggregated[name] = aggregated.get(name, 0) + solved
+
+            return [
+                {"topic": topic, "count": count}
+                for topic, count in sorted(
+                    aggregated.items(), key=lambda kv: kv[1], reverse=True
+                )
+            ]
+        except Exception:
+            return []
 
     @staticmethod
     def decode_heatmap(json_data):

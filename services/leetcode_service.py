@@ -45,3 +45,12 @@ class LeetCodeService:
             return None, error
 
         return ResponseDecoder.decode_heatmap(json_data), None
+
+    @staticmethod
+    def get_skill_stats(username):
+        """Fetch and aggregate per-tag solved counts (topic analysis)."""
+        json_data, error = LeetCodeAPI.fetch_skill_stats(username)
+        if error:
+            return None, error
+
+        return ResponseDecoder.decode_skill_stats(json_data), None
