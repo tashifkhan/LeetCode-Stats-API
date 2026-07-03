@@ -1,220 +1,14 @@
-import requests
 import json
 import math
-from decimal import Decimal, ROUND_HALF_UP
 from datetime import date, datetime, timedelta, timezone
+from decimal import ROUND_HALF_UP, Decimal
 
+from models.badges import Badge, BadgesResponse, UpcomingBadge
+from models.contests import ContestBadge, ContestHistoryEntry, ContestInfo, ContestRankingResponse
+from models.heatmap import HeatmapDay, HeatmapResponse, YearlyContribution
+from models.profiles import Contribution, ProfileResponse, RecentSubmission, UserProfile
 from models.stats import StatsResponse
-from models.contests import ContestRankingResponse, ContestBadge, ContestHistoryEntry, ContestInfo
-from models.profiles import ProfileResponse, UserProfile, Contribution, RecentSubmission
-from models.badges import BadgesResponse, Badge, UpcomingBadge
-from models.heatmap import HeatmapResponse, HeatmapDay, YearlyContribution
-from config import Config
 
-class LeetCodeAPI:
-    @staticmethod
-    def fetch_user_stats(username):
-        query = """
-        query getUserProfile($username: String!) {
-            allQuestionsCount {
-                difficulty
-                count
-            }
-            matchedUser(username: $username) {
-                contributions {
-                    points
-                }
-                profile {
-                    reputation
-                    ranking
-                }
-                submissionCalendar
-                submitStats {
-                    acSubmissionNum {
-                        difficulty
-                        count
-                        submissions
-                    }
-                    totalSubmissionNum {
-                        difficulty
-                        count
-                        submissions
-                    }
-                }
-            }
-        }
-        """
-        
-        return LeetCodeAPI._make_request(query, username)
-    
-    @staticmethod
-    def fetch_contest_ranking(username):
-        query = """
-        query getUserContestRanking($username: String!) {
-            userContestRanking(username: $username) {
-                attendedContestsCount
-                rating
-                globalRanking
-                totalParticipants
-                topPercentage
-                badge {
-                    name
-                }
-            }
-            userContestRankingHistory(username: $username) {
-                attended
-                rating
-                ranking
-                trendDirection
-                problemsSolved
-                totalProblems
-                finishTimeInSeconds
-                contest {
-                    title
-                    startTime
-                }
-            }
-        }
-        """
-        
-        return LeetCodeAPI._make_request(query, username)
-    
-    @staticmethod
-    def fetch_user_profile(username):
-        query = """
-        query getUserProfile($username: String!) {
-            allQuestionsCount {
-                difficulty
-                count
-            }
-            matchedUser(username: $username) {
-                username
-                githubUrl
-                twitterUrl
-                linkedinUrl
-                contributions {
-                    points
-                    questionCount
-                    testcaseCount
-                }
-                profile {
-                    realName
-                    userAvatar
-                    birthday
-                    ranking
-                    reputation
-                    websites
-                    countryName
-                    company
-                    school
-                    skillTags
-                    aboutMe
-                    starRating
-                }
-                badges {
-                    id
-                    displayName
-                    icon
-                    creationDate
-                }
-                upcomingBadges {
-                    name
-                    icon
-                }
-                activeBadge {
-                    id
-                    displayName
-                    icon
-                    creationDate
-                }
-                submitStats {
-                    totalSubmissionNum {
-                        difficulty
-                        count
-                        submissions
-                    }
-                    acSubmissionNum {
-                        difficulty
-                        count
-                        submissions
-                    }
-                }
-                submissionCalendar
-            }
-            recentSubmissionList(username: $username, limit: 20) {
-                title
-                titleSlug
-                timestamp
-                statusDisplay
-                lang
-            }
-        }
-        """
-        
-        return LeetCodeAPI._make_request(query, username)
-    
-    @staticmethod
-    def fetch_user_badges(username):
-        query = """
-        query getUserBadges($username: String!) {
-            matchedUser(username: $username) {
-                badges {
-                    id
-                    displayName
-                    icon
-                    creationDate
-                }
-                upcomingBadges {
-                    name
-                    icon
-                }
-                activeBadge {
-                    id
-                    displayName
-                    icon
-                    creationDate
-                }
-            }
-        }
-        """
-        
-        return LeetCodeAPI._make_request(query, username)
-
-    @staticmethod
-    def fetch_user_heatmap(username):
-        query = """
-        query getUserHeatmap($username: String!) {
-            matchedUser(username: $username) {
-                username
-                submissionCalendar
-            }
-        }
-        """
-
-        return LeetCodeAPI._make_request(query, username)
-    
-    @staticmethod
-    def _make_request(query, username):
-        try:
-            response = requests.post(
-                Config.LEETCODE_API_URL,
-                json={
-                    "query": query,
-                    "variables": {"username": username}
-                },
-                headers=Config.get_headers(username)
-            )
-            
-            if response.status_code == 200:
-                json_data = response.json()
-                if "errors" in json_data:
-                    return None, "user does not exist"
-                return json_data, None
-            else:
-                return None, f"HTTP {response.status_code}"
-                
-        except Exception as e:
-            return None, str(e)
 
 class ResponseDecoder:
     @staticmethod
@@ -341,7 +135,7 @@ class ResponseDecoder:
                 return ContestRankingResponse.error("error", "user has no contest history")
             
             contest_ranking = data["userContestRanking"]
-            contest_history = data["userContestRankingHistory"]
+            contest_history = data.get("userContestRankingHistory") or []
             
             # Process badge info
             badge = None
@@ -351,18 +145,21 @@ class ResponseDecoder:
             # Process contest history
             history_entries = []
             for entry in contest_history:
+                if not isinstance(entry, dict):
+                    continue
+                contest = entry.get("contest") or {}
                 history_entries.append(
                     ContestHistoryEntry(
-                        attended=entry["attended"],
-                        rating=entry["rating"],
-                        ranking=entry["ranking"],
-                        trendDirection=entry["trendDirection"],
-                        problemsSolved=entry["problemsSolved"],
-                        totalProblems=entry["totalProblems"],
-                        finishTimeInSeconds=entry["finishTimeInSeconds"],
+                        attended=bool(entry.get("attended")),
+                        rating=entry.get("rating") or 0,
+                        ranking=entry.get("ranking") or 0,
+                        trendDirection=entry.get("trendDirection") or "SAME",
+                        problemsSolved=entry.get("problemsSolved") or 0,
+                        totalProblems=entry.get("totalProblems") or 0,
+                        finishTimeInSeconds=entry.get("finishTimeInSeconds") or 0,
                         contest=ContestInfo(
-                            title=entry["contest"]["title"],
-                            startTime=entry["contest"]["startTime"]
+                            title=contest.get("title") or "Contest",
+                            startTime=contest.get("startTime") or 0
                         )
                     )
                 )
@@ -541,6 +338,34 @@ class ResponseDecoder:
             )
         except Exception as e:
             return BadgesResponse.error("error", str(e))
+
+    @staticmethod
+    def decode_skill_stats(json_data):
+        """Aggregate tagProblemCounts across tiers into a sorted topic list.
+
+        Returns a list of ``{"topic": str, "count": int}`` dicts, highest first.
+        """
+        try:
+            matched_user = json_data["data"]["matchedUser"]
+            tag_counts = (matched_user or {}).get("tagProblemCounts") or {}
+
+            aggregated = {}
+            for tier in ("advanced", "intermediate", "fundamental"):
+                for entry in tag_counts.get(tier) or []:
+                    name = entry.get("tagName")
+                    solved = int(entry.get("problemsSolved") or 0)
+                    if not name or solved <= 0:
+                        continue
+                    aggregated[name] = aggregated.get(name, 0) + solved
+
+            return [
+                {"topic": topic, "count": count}
+                for topic, count in sorted(
+                    aggregated.items(), key=lambda kv: kv[1], reverse=True
+                )
+            ]
+        except Exception:
+            return []
 
     @staticmethod
     def decode_heatmap(json_data):

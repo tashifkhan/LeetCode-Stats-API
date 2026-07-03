@@ -1,0 +1,2 @@
+PLATFORM = "leetcode"
+CATEGORY = "dsa"

@@ -1,6 +1,6 @@
 # LeetCode Stats API
 
-A robust RESTful API to fetch and display LeetCode statistics for users, built with Flask.
+A robust RESTful API to fetch and display LeetCode statistics for users, built with FastAPI.
 
 hosted at [leetcode-stats.tashif.codes](https://leetcode-stats.tashif.codes)
 
@@ -357,25 +357,19 @@ fetch(`https://leetcode-stats.tashif.codes/${username}`)
    cd LeetCode-Stats-API
    ```
 
-2. Create a virtual environment
+2. Install dependencies (managed with [uv](https://docs.astral.sh/uv/))
 
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   uv sync
    ```
 
-3. Install dependencies
-
+3. Start the server
    ```bash
-   pip install -r requirements.txt
+   uv run uvicorn app:app --reload
    ```
 
-4. Start the server
-   ```bash
-   python app.py
-   ```
-
-The API will be available at `http://localhost:58352`.
+The API will be available at `http://localhost:58352` (or pass `--port` to
+choose another). Interactive Swagger docs are at `/docs`, the custom dashboard at `/`.
 
 ## Contributing
 

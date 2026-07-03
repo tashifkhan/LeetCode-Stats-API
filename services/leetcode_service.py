@@ -1,4 +1,9 @@
-from services.leetcode_api import LeetCodeAPI, ResponseDecoder
+from services.client import LeetCodeAPI
+from services.decoders.badges import decode_badges
+from services.decoders.contests import decode_contest_ranking
+from services.decoders.heatmap import decode_heatmap
+from services.decoders.profile import decode_profile
+from services.decoders.stats import decode_skill_stats, decode_stats
 
 class LeetCodeService:
     @staticmethod
@@ -8,7 +13,7 @@ class LeetCodeService:
         if error:
             return None, error
             
-        return ResponseDecoder.decode_stats(json_data), None
+        return decode_stats(json_data), None
     
     @staticmethod
     def get_contest_ranking(username):
@@ -17,7 +22,7 @@ class LeetCodeService:
         if error:
             return None, error
             
-        return ResponseDecoder.decode_contest_ranking(json_data), None
+        return decode_contest_ranking(json_data), None
     
     @staticmethod
     def get_user_profile(username):
@@ -26,7 +31,7 @@ class LeetCodeService:
         if error:
             return None, error
             
-        return ResponseDecoder.decode_profile(json_data), None
+        return decode_profile(json_data), None
     
     @staticmethod
     def get_user_badges(username):
@@ -35,7 +40,7 @@ class LeetCodeService:
         if error:
             return None, error
             
-        return ResponseDecoder.decode_badges(json_data), None
+        return decode_badges(json_data), None
 
     @staticmethod
     def get_user_heatmap(username):
@@ -44,4 +49,13 @@ class LeetCodeService:
         if error:
             return None, error
 
-        return ResponseDecoder.decode_heatmap(json_data), None
+        return decode_heatmap(json_data), None
+
+    @staticmethod
+    def get_skill_stats(username):
+        """Fetch and aggregate per-tag solved counts (topic analysis)."""
+        json_data, error = LeetCodeAPI.fetch_skill_stats(username)
+        if error:
+            return None, error
+
+        return decode_skill_stats(json_data), None
