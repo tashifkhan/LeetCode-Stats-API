@@ -30,3 +30,5 @@ archive.zip
 .DS_Store
 
 test
+.vercel
+.env*
