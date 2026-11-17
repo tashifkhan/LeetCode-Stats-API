@@ -8,6 +8,5 @@ router = APIRouter(tags=["Canonical"])
 
 
 @router.get("/{username}/topics")
-def get_topics(username: str):
-    stats = canonical_mapper.build_stats(username)
-    return make_envelope(username, stats.topicAnalysis)
+async def get_topics(username: str):
+    return make_envelope(username, await canonical_mapper._topics(username))

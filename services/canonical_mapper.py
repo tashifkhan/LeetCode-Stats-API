@@ -9,6 +9,7 @@ network round-trip; clients compose full cards by calling the section endpoints.
 See ../CANONICAL_SCHEMA.md for the wire format.
 """
 
+import asyncio
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -153,41 +154,41 @@ def badges_from(badges_response) -> Badges:
 
 # --- fetchers (network -> canonical section) ----------------------------------
 
-def _topics(username: str) -> List[TopicCount]:
-    skill_data, skill_error = LeetCodeService.get_skill_stats(username)
+async def _topics(username: str) -> List[TopicCount]:
+    skill_data, skill_error = await LeetCodeService.get_skill_stats(username)
     if skill_error or not skill_data:
         return []
     return [TopicCount(topic=t["topic"], count=t["count"]) for t in skill_data]
 
 
-def build_profile(username: str) -> Profile:
-    response, _ = LeetCodeService.get_user_profile(username)
+async def build_profile(username: str) -> Profile:
+    response, _ = await LeetCodeService.get_user_profile(username)
     return profile_from(response, username)
 
 
-def build_stats(username: str) -> Stats:
-    response, _ = LeetCodeService.get_user_stats(username)
-    return stats_from(response, _topics(username))
+async def build_stats(username: str) -> Stats:
+    response, _ = await LeetCodeService.get_user_stats(username)
+    return stats_from(response, await _topics(username))
 
 
-def build_contests(username: str) -> Contests:
-    response, _ = LeetCodeService.get_contest_ranking(username)
+async def build_contests(username: str) -> Contests:
+    response, _ = await LeetCodeService.get_contest_ranking(username)
     return contests_from(response)
 
 
-def build_rating(username: str, contests: Optional[Contests] = None) -> Rating:
+async def build_rating(username: str, contests: Optional[Contests] = None) -> Rating:
     if contests is None:
-        contests = build_contests(username)
+        contests = await build_contests(username)
     return rating_from(contests)
 
 
-def build_heatmap(username: str) -> Heatmap:
-    response, _ = LeetCodeService.get_user_heatmap(username)
+async def build_heatmap(username: str) -> Heatmap:
+    response, _ = await LeetCodeService.get_user_heatmap(username)
     return window_heatmap(heatmap_from(response), "all", None)
 
 
-def build_badges(username: str) -> Badges:
-    response, _ = LeetCodeService.get_user_badges(username)
+async def build_badges(username: str) -> Badges:
+    response, _ = await LeetCodeService.get_user_badges(username)
     return badges_from(response)
 
 
@@ -203,15 +204,9 @@ def summary_from(card: Card) -> Summary:
     )
 
 
-def build_card(username: str) -> Card:
+async def build_card(username: str) -> Card:
     """Fetch every section and compose the full canonical card."""
-    contests = build_contests(username)
-    return Card(
-        username=username,
-        profile=build_profile(username),
-        stats=build_stats(username),
-        contests=contests,
-        rating=rating_from(contests),
-        heatmap=build_heatmap(username),
-        badges=build_badges(username),
-    )
+    profile, stats, contests, heatmap, badges = await asyncio.gather(
+        build_profile(username), build_stats(username), build_contests(username), build_heatmap(username), build_badges(username))
+    return Card(username=username, profile=profile, stats=stats, contests=contests,
+                rating=rating_from(contests), heatmap=heatmap, badges=badges)

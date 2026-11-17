@@ -11,8 +11,8 @@ router = APIRouter(tags=["Canonical"])
 
 
 @router.get("/{username}/badges")
-def get_user_badges(username: str):
-    badges_response, error = fetch_user_badges(username)
+async def get_user_badges(username: str):
+    badges_response, error = await fetch_user_badges(username)
 
     if error:
         error_response = BadgesResponse.error("error", error)

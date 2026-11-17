@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import Config
 from core.middleware import CacheRateLimitMiddleware
+from core.runtime import RequestBudgetMiddleware
 from routes.badges import router as badges_router
 from routes.contests import router as contests_router
 from routes.heatmap import router as heatmap_router
@@ -20,6 +21,9 @@ app = FastAPI(
     version="1.0.0",
 )
 
+app.add_middleware(CacheRateLimitMiddleware, platform="leetcode")
+app.add_middleware(RequestBudgetMiddleware)
+# Added last so it is outermost: deadline 504s and 429s still get CORS headers.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,7 +31,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(CacheRateLimitMiddleware, platform="leetcode")
 
 # Custom docs landing page lives at "/"; the canonical router's canonical
 # endpoints are registered before the catch-all "/{username}" stats route.

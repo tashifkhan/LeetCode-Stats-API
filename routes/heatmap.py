@@ -68,14 +68,14 @@ def _window_heatmap(legacy: dict, view: str, year: Optional[int]) -> dict:
 
 
 @router.get("/{username}/heatmap")
-def get_user_heatmap(
+async def get_user_heatmap(
     username: str,
     view: str = Query("all", description="all | last_365 | year"),
     year: Optional[int] = Query(None, description="Required when view=year"),
 ):
     view, year = normalize_view(view, year)
 
-    heatmap_response, error = fetch_user_heatmap(username)
+    heatmap_response, error = await fetch_user_heatmap(username)
 
     if error:
         error_response = HeatmapResponse.error("error", error)

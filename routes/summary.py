@@ -12,11 +12,11 @@ router = APIRouter(tags=["Canonical"])
 
 
 @router.get("/{username}")
-def get_summary(username: str):
-    stats_response, error = fetch_user_stats(username)
+async def get_summary(username: str):
+    stats_response, error = await fetch_user_stats(username)
     if error:
         error_response = StatsResponse.error("error", error)
         return make_envelope(username, None, legacy=asdict(error_response), status="error", message=error)
 
-    card = canonical_mapper.build_card(username)
+    card = await canonical_mapper.build_card(username)
     return make_envelope(username, canonical_mapper.summary_from(card), legacy=asdict(stats_response))

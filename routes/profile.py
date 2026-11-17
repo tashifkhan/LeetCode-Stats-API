@@ -12,8 +12,8 @@ router = APIRouter(tags=["Canonical"])
 
 
 @router.get("/{username}/profile")
-def get_user_profile(username: str):
-    profile_response, error = fetch_user_profile(username)
+async def get_user_profile(username: str):
+    profile_response, error = await fetch_user_profile(username)
     if error:
         error_response = ProfileResponse.error("error", error)
         return make_envelope(username, None, legacy=asdict(error_response), status="error", message=error)
