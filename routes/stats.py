@@ -12,7 +12,7 @@ router = APIRouter(tags=["Canonical"])
 
 
 @router.get("/{username}/stats/svg", summary="Stats SVG card")
-def get_stats_svg(
+async def get_stats_svg(
     username: str,
     theme: str = Query("dark", description="Card theme: dark or light"),
     exclude: str | None = Query(
@@ -20,7 +20,7 @@ def get_stats_svg(
         description="Comma-separated topics to exclude from the topic bars",
     ),
 ):
-    stats_response, error = fetch_user_stats(username)
+    stats_response, error = await fetch_user_stats(username)
     if error:
         return error_svg_response(
             error,
@@ -28,7 +28,7 @@ def get_stats_svg(
             username=username,
             theme=theme,
         )
-    data = canonical_mapper.stats_from(stats_response, canonical_mapper._topics(username))
+    data = canonical_mapper.stats_from(stats_response, await canonical_mapper._topics(username))
     return stats_svg_response(
         "leetcode",
         username,
@@ -39,8 +39,8 @@ def get_stats_svg(
 
 
 @router.get("/{username}/stats")
-def get_stats(username: str):
-    stats_response, error = fetch_user_stats(username)
+async def get_stats(username: str):
+    stats_response, error = await fetch_user_stats(username)
 
     if error:
         error_response = StatsResponse.error("error", error)
@@ -53,5 +53,5 @@ def get_stats(username: str):
         )
 
     legacy = asdict(stats_response)
-    data = canonical_mapper.stats_from(stats_response, canonical_mapper._topics(username))
+    data = canonical_mapper.stats_from(stats_response, await canonical_mapper._topics(username))
     return make_envelope(username, data, legacy=legacy)

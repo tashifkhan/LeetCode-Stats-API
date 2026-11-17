@@ -8,5 +8,5 @@ router = APIRouter(tags=["Canonical"])
 
 
 @router.get("/{username}/rating")
-def get_rating(username: str):
-    return make_envelope(username, canonical_mapper.build_rating(username))
+async def get_rating(username: str):
+    return make_envelope(username, await canonical_mapper.build_rating(username))

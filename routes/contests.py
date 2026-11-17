@@ -11,8 +11,8 @@ router = APIRouter(tags=["Canonical"])
 
 
 @router.get("/{username}/contests")
-def get_contest_ranking(username: str):
-    contest_response, error = fetch_contest_ranking(username)
+async def get_contest_ranking(username: str):
+    contest_response, error = await fetch_contest_ranking(username)
 
     if error:
         error_response = ContestRankingResponse.error("error", error)
