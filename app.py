@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import Config
+from core.analytics import AnalyticsMiddleware
 from core.middleware import CacheRateLimitMiddleware
 from core.runtime import RequestBudgetMiddleware
 from routes.badges import router as badges_router
@@ -23,6 +24,8 @@ app = FastAPI(
 
 app.add_middleware(CacheRateLimitMiddleware, platform="leetcode")
 app.add_middleware(RequestBudgetMiddleware)
+# Outside the cache so cache hits and 429s are counted; inside CORS.
+app.add_middleware(AnalyticsMiddleware, api="leetcode")
 # Added last so it is outermost: deadline 504s and 429s still get CORS headers.
 app.add_middleware(
     CORSMiddleware,
