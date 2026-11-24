@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 import httpx
 from starlette.responses import JSONResponse
 
+from core.cache_control import _no_store
+
 logger = logging.getLogger("stats_api")
 
 # Total budget per request, under Vercel's 10s function limit.
@@ -70,9 +72,7 @@ class RequestBudgetMiddleware:
                     sent, status = True, message["status"]
                     # Service-level enrichment metadata does not change existing data shapes.
                     if current.meta:
-                        headers = list(message.get("headers", []))
-                        headers = [(k, v) for k, v in headers if k.lower() != b"cache-control"]
-                        headers.append((b"cache-control", b"no-store"))
+                        headers = _no_store(list(message.get("headers", [])))
                         import json
                         headers.append((b"x-data-state", json.dumps(current.meta, separators=(",", ":")).encode()))
                         message["headers"] = headers
@@ -85,7 +85,7 @@ class RequestBudgetMiddleware:
                     raise
                 response = JSONResponse(
                     {"status": "error", "message": "Upstream request deadline exceeded"},
-                    status_code=504, headers={"Cache-Control": "no-store"},
+                    status_code=504, headers=_no_store({}),
                 )
                 await response(scope, receive, tracked)
             finally:
