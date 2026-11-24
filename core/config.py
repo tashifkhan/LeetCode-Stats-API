@@ -5,7 +5,7 @@ class CacheRateLimitSettings:
     redis_url = os.getenv("REDIS_URL")
     upstash_rest_url: str | None = os.getenv("UPSTASH_REDIS_REST_URL")
     upstash_rest_token: str | None = os.getenv("UPSTASH_REDIS_REST_TOKEN")
-    cache_ttl_seconds = int(os.getenv("API_CACHE_TTL_SECONDS", "3600"))
+    cache_ttl_seconds = int(os.getenv("API_CACHE_TTL_SECONDS", "43200"))
     invalid_user_cache_ttl_seconds = int(os.getenv("INVALID_USER_CACHE_TTL_SECONDS", "300"))
     rate_limit_ip_requests = int(os.getenv("RATE_LIMIT_IP_REQUESTS", "60"))
     rate_limit_handle_requests = int(os.getenv("RATE_LIMIT_HANDLE_REQUESTS", "30"))
