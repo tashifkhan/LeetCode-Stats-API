@@ -25,7 +25,7 @@ app = FastAPI(
 app.add_middleware(CacheRateLimitMiddleware, platform="leetcode")
 app.add_middleware(RequestBudgetMiddleware)
 # Outside the cache so cache hits and 429s are counted; inside CORS.
-app.add_middleware(AnalyticsMiddleware, api="leetcode")
+app.add_middleware(AnalyticsMiddleware, api="leetcode", wait=True)
 # Added last so it is outermost: deadline 504s and 429s still get CORS headers.
 app.add_middleware(
     CORSMiddleware,
